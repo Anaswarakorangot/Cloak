@@ -291,14 +291,6 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           </div>
         )}
         
-        {reviewMode && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-center gap-2">
-            <span className="text-amber-400">💡</span>
-            <p className="text-sm text-amber-200/90 font-medium tracking-wide">
-              <strong>Tip:</strong> Highlight any text to manually redact missed details.
-            </p>
-          </div>
-        )}
         
         <div 
           ref={textRef}
