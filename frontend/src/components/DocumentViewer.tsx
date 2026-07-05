@@ -5,8 +5,14 @@ import { ControlPanel } from './ControlPanel';
 import { PIIType, DocumentAnalysisResult } from '@shared/types';
 import { cn } from '../lib/utils';
 import * as Popover from '@radix-ui/react-popover';
-import { Info, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Info, ShieldAlert, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Document as PdfDocument, Page as PdfPage, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+
 
 interface DocumentViewerProps {
   documentState: {
@@ -29,9 +35,11 @@ interface DocumentViewerProps {
 export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName, sessionLog = [], undoLastAction } = documentState;
   const textRef = useRef<HTMLDivElement>(null);
+  const pdfRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
   const [focusedSpanIndex, setFocusedSpanIndex] = useState<number>(0);
-
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState<number>(1);
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const tooltipEl = document.getElementById('redaction-tooltip');
@@ -351,11 +359,47 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 text-xs text-slate-400 font-bold tracking-wider uppercase flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span> Original PDF Context
                 </div>
-                <iframe 
-                  src={`http://localhost:8000/api/documents/${document.document_id}/pdf`} 
-                  className="w-full flex-1 border-0"
-                  title="Original PDF Document"
-                />
+                <div 
+                  ref={pdfRef}
+                  className="w-full flex-1 overflow-auto bg-slate-800/20 relative"
+                  onMouseUp={handleSelection}
+                >
+                  <PdfDocument
+                    file={`http://localhost:8000/api/documents/${document.document_id}/pdf`}
+                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                    className="flex flex-col items-center p-4 selection:bg-indigo-500/30"
+                  >
+                    <PdfPage 
+                      pageNumber={pageNumber} 
+                      renderTextLayer={true} 
+                      renderAnnotationLayer={true}
+                      className="shadow-2xl border border-white/10"
+                      width={500}
+                    />
+                  </PdfDocument>
+                  
+                  {numPages && numPages > 1 && (
+                    <div className="sticky bottom-4 mx-auto w-fit flex items-center gap-4 bg-slate-900/90 border border-slate-700/50 backdrop-blur-md px-4 py-2 rounded-full shadow-lg mt-4 z-10">
+                      <button 
+                        onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+                        disabled={pageNumber <= 1}
+                        className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <span className="text-xs font-semibold text-slate-300">
+                        Page {pageNumber} of {numPages}
+                      </span>
+                      <button 
+                        onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
+                        disabled={pageNumber >= numPages}
+                        className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
