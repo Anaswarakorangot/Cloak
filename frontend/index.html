@@ -1,15 +1,1094 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cloak Prototype</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cloak — Intelligent PII Redaction Platform</title>
+<meta name="description" content="Cloak is an AI-powered platform that detects and redacts personally identifiable information from your documents — upload, scan, protect." />
+<meta name="theme-color" content="#0a0a0a" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { background: var(--background); color: var(--foreground); font-family: 'Onest', sans-serif; overflow-x: hidden; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+ul { list-style: none; }
+img { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  --ink: #0a0a0a;
+  --muted: #8d8d8d;
+  --subtle: #b6b6b6;
+  --line: #e6e5e2;
+  --surface: #f1f0ee;
+  --surface-2: #e3e2df;
+  --accent: #b15f2c;
+  --accent-from: #cf8047;
+  --accent-to: #97501f;
+  --hero-from: #ecebe9;
+  --hero-to: #c9c9c9;
+  --radius-pill: 9999px;
+  --radius-card: 2rem;
+  --radius-card-sm: 1.25rem;
+  --radius-control: 0.875rem;
+  --text-watermark: 13rem;
+  --container-shell: 88rem;
+}
+
+@media (max-width:1920px) { html { font-size: 0.833333vw; } }
+@media (max-width:1440px) { html { font-size: 1.111111vw; } }
+@media (max-width:1024px) { html { font-size: 1.5625vw; } }
+@media (max-width:640px) { html { font-size: 4.444444vw; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Shell */
+.shell { max-width: var(--container-shell); margin-inline: auto; padding-inline: 1.25rem; }
+@media (min-width: 640px) { .shell { padding-inline: 2rem; } }
+
+/* Shared Utilities */
+.hover-spring { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Buttons & Pills */
+.pill-btn { display: inline-block; }
+.pill-btn-inner { display: inline-flex; align-items: center; gap: 0.75rem; border-radius: var(--radius-pill); font-size: 0.875rem; font-weight: 500; }
+.pill-btn.dark .pill-btn-inner { background: var(--ink); color: #fff; }
+.pill-btn.light .pill-btn-inner { background: var(--surface); color: #111; }
+.pill-btn.outline .pill-btn-inner { border: 1px solid var(--line); background: transparent; color: #111; }
+.pill-btn.has-arrow .pill-btn-inner { padding: 0.375rem 0.375rem 0.375rem 1.5rem; }
+.pill-btn.no-arrow .pill-btn-inner { padding: 0.875rem 1.75rem; }
+.pill-arrow-badge { width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border-radius: var(--radius-pill); font-size: 1rem; transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pill-btn.dark .pill-arrow-badge { background: #fff; color: var(--ink); }
+.pill-btn.light .pill-arrow-badge, .pill-btn.outline .pill-arrow-badge { background: var(--ink); color: #fff; }
+
+@media (hover: hover) {
+  .pill-btn:hover { transform: scale(1.04); }
+  .pill-btn:hover .pill-arrow-badge.arrow-right { transform: translate(3px, 0); }
+  .pill-btn:hover .pill-arrow-badge.arrow-up-right { transform: translate(2px, -2px); }
+  .hover-scale-104:hover { transform: scale(1.04); }
+  .hover-scale-105:hover { transform: scale(1.05); }
+  .hover-scale-103:hover { transform: scale(1.03); }
+  .hover-scale-1012:hover { transform: scale(1.012); }
+  .hover-scale-118:hover { transform: scale(1.18); }
+  .hover-lift-2px:hover { transform: translateY(-2px); opacity: 1; }
+  .hover-lift-8px:hover { transform: translateY(-8px); opacity: 1; }
+  .card-hover:hover .card-badge { transform: rotate(45deg) scale(1.08); }
+  .hover-fill-row:hover { background: rgba(241,240,238,1); padding-left: 2rem; padding-right: 1.25rem; }
+  .hover-fill-row:hover .row-badge { transform: translateX(5px); }
+  .anim-link-4px:hover { transform: translateX(4px); opacity: 1; }
+  .anim-link-3px:hover { transform: translateX(3px); opacity: 1; }
+  .header-menu-btn:hover { background: rgba(255,255,255,0.7); }
+}
+
+/* Base Reveals */
+.reveal-base { opacity: 0; transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.reveal-base.is-visible { opacity: 1; transform: none !important; }
+.reveal-y-10 { transform: translateY(10px); }
+.reveal-y-12 { transform: translateY(12px); }
+.reveal-y-14 { transform: translateY(14px); }
+.reveal-y-16 { transform: translateY(16px); }
+.reveal-y-20 { transform: translateY(20px); }
+.reveal-y-24 { transform: translateY(24px); }
+.reveal-y-28 { transform: translateY(28px); }
+.reveal-y-40 { transform: translateY(40px); }
+.reveal-y-48 { transform: translateY(48px); }
+.reveal-scale-96 { transform: translateY(16px) scale(0.96); }
+.reveal-scale-99 { transform: translateY(40px) scale(0.99); }
+.reveal-header { transform: translateY(-14px); transition: all 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* Text Reveals */
+.line-reveal-wrap { overflow: hidden; display: block; }
+.line-reveal-inner { display: inline-block; transform: translateY(100%); opacity: 0; transition: transform 0.9s cubic-bezier(0.215, 0.61, 0.355, 1), opacity 0.9s cubic-bezier(0.215, 0.61, 0.355, 1); }
+.is-visible .line-reveal-inner { transform: translateY(0%); opacity: 1; }
+
+.word-reveal-wrap { display: inline-block; overflow: hidden; vertical-align: bottom; }
+.word-reveal-inner { display: inline-block; transform: translateY(24px); opacity: 0; transition: transform 0.7s cubic-bezier(0.165, 0.84, 0.44, 1), opacity 0.7s cubic-bezier(0.165, 0.84, 0.44, 1); }
+.is-visible .word-reveal-inner { transform: translateY(0); opacity: 1; }
+
+/* Eyebrow & Tags */
+.eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; }
+.eyebrow-dot { width: 0.375rem; height: 0.375rem; border-radius: 9999px; }
+.eyebrow.dark { color: rgba(17,17,17,0.7); }
+.eyebrow.dark .eyebrow-dot { background: rgba(17,17,17,0.5); }
+.eyebrow.light { color: rgba(255,255,255,0.7); }
+.eyebrow.light .eyebrow-dot { background: rgba(255,255,255,0.6); }
+
+/* Nav Menu Overlay */
+#nav-menu { position: fixed; inset: 0; z-index: 115; display: flex; flex-direction: column; background: var(--ink); color: #fff; opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+#nav-menu.open { opacity: 1; pointer-events: auto; }
+.nav-item-enter { transform: translateY(1rem); opacity: 0; transition: all 0.5s ease-out; }
+#nav-menu.open .nav-item-enter { transform: translateY(0); opacity: 1; }
+.nav-item-group:hover .nav-idx { color: var(--accent-from); }
+.nav-item-group:hover .nav-lbl { color: #fff; }
+
+/* Request Modal */
+#request-modal-bg { position: fixed; inset: 0; z-index: 110; display: flex; align-items: flex-end; justify-content: center; padding: 1rem; background: rgba(17,17,17,0.3); backdrop-filter: blur(16px); opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+#request-modal-bg.open { opacity: 1; pointer-events: auto; }
+@media(min-width: 640px) { #request-modal-bg { align-items: center; } }
+#request-modal-panel { position: relative; width: 100%; max-width: 32rem; overflow: hidden; border-radius: 2rem; background: #fff; padding: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); box-shadow: 0 0 0 1px var(--line); transform: translateY(28px); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+#request-modal-bg.open #request-modal-panel { transform: translateY(0); }
+@media(min-width: 640px) { #request-modal-panel { padding: 2rem; } }
+
+/* Specific Components */
+.hero-watermark { pointer-events: none; position: absolute; inset-inline: 0; bottom: 7rem; z-index: 1; text-align: center; user-select: none; font-weight: 700; line-height: 1; font-size: var(--text-watermark); color: rgba(255,255,255,0.4); }
+.footer-watermark { position: absolute; inset-inline: 0; bottom: -1.5rem; z-index: 0; text-align: center; pointer-events: none; user-select: none; font-weight: 700; line-height: 1; font-size: var(--text-watermark); color: rgba(255,255,255,0.05); }
+
+/* Utility */
+.sr-only:focus { position: fixed; left: 1rem; top: 1rem; z-index: 60; border-radius: 0.875rem; background: var(--ink); padding: 0.5rem 1rem; font-size: 0.875rem; color: #fff; width: auto; height: auto; clip: auto; }
+</style>
+</head>
+<body>
+<a href="#main" class="sr-only">Skip to content</a>
+
+<div id="page-loader" style="position:fixed; inset:0; z-index:120; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2rem; background:#0a0a0a; color:#fff; border-radius:0 0 2rem 2rem; transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);">
+  <div id="loader-content" style="display:flex; flex-direction:column; align-items:center; gap:1.25rem; transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1);">
+    <div style="font-weight:600; font-size:1.5rem; display:flex; align-items:center; gap:0.5rem;">
+      <svg viewBox="0 0 48 48" style="width:1.875rem; height:1.875rem; fill:#cf8047;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+      Cloak
+    </div>
+    <p style="max-width:24ch; font-size:0.875rem; color:rgba(255,255,255,0.55); text-align:center;">Intelligent PII protection, shipped with precision.</p>
+  </div>
+  <div style="width:min(22rem, 72vw); display:flex; flex-direction:column; gap:0.75rem;">
+    <div style="height:1px; background:rgba(255,255,255,0.15); width:100%;">
+      <div id="loader-progress-bar" style="height:100%; background:#cf8047; width:0%; transition:width 0.1s ease-out;"></div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; color:rgba(255,255,255,0.45);">
+      <span>Loading</span>
+      <span id="loader-progress-text" style="color:rgba(255,255,255,0.8); font-variant-numeric:tabular-nums;">000</span>
+    </div>
+  </div>
+</div>
+
+<header id="header" class="reveal-base reveal-header" style="position:absolute; inset-inline:0; top:0; z-index:50;">
+  <div class="shell" style="display:flex; align-items:center; justify-content:space-between; gap:1.5rem; padding:1.25rem;">
+    <!-- Brand -->
+    <button onclick="window.customScrollTo('home')" class="hover-spring hover-scale-104" style="display:flex; align-items:center; gap:0.5rem; font-size:1.125rem; font-weight:600; letter-spacing:-0.01em;">
+      <svg viewBox="0 0 48 48" style="width:1.25rem; height:1.25rem; fill:#b15f2c;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+      Cloak
+    </button>
+    
+    <!-- Primary Nav -->
+    <ul style="display:none; gap:2rem; font-size:0.875rem; font-weight:500;" class="nav-desktop">
+      <li><button onclick="window.customScrollTo('home')" class="hover-spring hover-lift-2px" aria-current="page" style="opacity:0.8;">Home</button></li>
+      <li><button onclick="window.customScrollTo('works')" class="hover-spring hover-lift-2px" style="opacity:0.8;">Features</button></li>
+      <li><button onclick="window.customScrollTo('services')" class="hover-spring hover-lift-2px" style="opacity:0.8; display:flex; align-items:center; gap:0.25rem;">How It Works <span style="font-size:0.75rem; opacity:0.6;">▾</span></button></li>
+      <li><button onclick="window.customScrollTo('about')" class="hover-spring hover-lift-2px" style="opacity:0.8;">About</button></li>
+      <li><a href="/login" class="hover-spring hover-lift-2px" style="opacity:0.8;">Login</a></li>
+      <li><a href="/login" class="hover-spring hover-lift-2px" style="opacity:0.8;">Sign Up</a></li>
+    </ul>
+
+    <!-- Clock + Menu -->
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <div style="display:none; border:1px solid rgba(230,229,226,0.8); background:rgba(255,255,255,0.4); backdrop-filter:blur(4px); border-radius:0.875rem; padding:0.5rem 0.75rem; gap:0.75rem; font-size:0.75rem; color:rgba(17,17,17,0.7);" class="clock-desktop">
+        <span style="color:rgba(17,17,17,0.45);">Local time</span>
+        <span id="live-time-desk" style="min-width:3.5rem; font-variant-numeric:tabular-nums; font-weight:500; color:#111;">9:41am</span>
+        <span style="color:rgba(17,17,17,0.3);">•</span>
+        <span id="live-date-desk" style="font-weight:500;">12 March, 2025</span>
+      </div>
+      <button onclick="openMenu()" class="header-menu-btn hover-spring" style="border:1px solid rgba(230,229,226,0.8); background:rgba(255,255,255,0.4); backdrop-filter:blur(4px); border-radius:0.875rem; padding:0.5rem 1rem;">
+        <span class="hover-spring hover-scale-105" style="display:inline-flex; align-items:center; gap:0.5rem; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.875rem;height:0.875rem;"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span class="menu-lbl-desk">Menu</span>
+        </span>
+      </button>
+    </div>
+  </div>
+</header>
+<style>
+@media (min-width: 640px) { .header-menu-btn { padding: 0.5rem 1rem; } .menu-lbl-desk { display: inline; } }
+@media (max-width: 639px) { .menu-lbl-desk { display: none; } }
+@media (min-width: 1024px) { .nav-desktop { display: flex !important; } }
+@media (min-width: 768px) { .clock-desktop { display: flex !important; } }
+</style>
+
+<main id="main">
+
+  <section id="home" style="position:relative; isolation:isolate; overflow:hidden; border-radius:0 0 2rem 2rem; background:var(--hero-to);">
+    <div id="liquid-container" style="position:absolute; inset:0; z-index:0;">
+      <img src="https://api.getlayers.ai/storage/v1/object/public/public/assets/lumora-e8b711fc68/hero/after.jpg" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover;" alt="" />
+      <canvas id="liquid-canvas" aria-hidden="true" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
+    </div>
+    <div style="position:absolute; inset:0; z-index:1; pointer-events:none; background:linear-gradient(to bottom, rgba(255,255,255,0.35), transparent, rgba(255,255,255,0.35));"></div>
+    <div class="hero-watermark reveal-base reveal-y-20 js-stagger" data-delay="300" style="transition:all 0.8s cubic-bezier(0.22,1,0.36,1);">CLOAK</div>
+    
+    <div class="shell" style="position:relative; z-index:20; display:flex; flex-direction:column; gap:2rem; padding:7rem 1.25rem 5rem; min-height:100lvh;">
+      <div class="hero-grid">
+        <div class="hero-left" style="display:flex; flex-direction:column; gap:1.75rem;">
+          <div class="eyebrow dark reveal-base reveal-y-10 js-stagger" data-delay="200">
+            <div class="eyebrow-dot"></div> AI-Powered PII Redaction
+          </div>
+          <h1 class="js-stagger line-stagger" data-delay="250" style="max-width:18ch; font-size:2.25rem; font-weight:600; line-height:0.98; letter-spacing:-0.02em;">
+            <span class="line-reveal-wrap"><span class="line-reveal-inner" style="transition-delay:0ms;">Protect sensitive</span></span><br/>
+            <span class="line-reveal-wrap"><span class="line-reveal-inner" style="transition-delay:120ms;">data with</span></span><br/>
+            <span class="line-reveal-wrap"><span class="line-reveal-inner" style="transition-delay:240ms;">intelligent redaction</span></span>
+          </h1>
+          <div class="reveal-base js-stagger" data-delay="650" style="display:flex; align-items:center; gap:0.75rem;">
+            <span style="color:#b15f2c; display:flex;">
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:currentColor;"><path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.9l-5.8 3.05 1.1-6.46-4.69-4.58 6.49-.94L12 2.5z"/></svg>
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:currentColor;"><path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.9l-5.8 3.05 1.1-6.46-4.69-4.58 6.49-.94L12 2.5z"/></svg>
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:currentColor;"><path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.9l-5.8 3.05 1.1-6.46-4.69-4.58 6.49-.94L12 2.5z"/></svg>
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:currentColor;"><path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.9l-5.8 3.05 1.1-6.46-4.69-4.58 6.49-.94L12 2.5z"/></svg>
+              <svg viewBox="0 0 24 24" style="width:1rem;height:1rem;fill:currentColor;"><path d="M12 2.5l2.9 5.88 6.49.94-4.7 4.58 1.11 6.46L12 17.9l-5.8 3.05 1.1-6.46-4.69-4.58 6.49-.94L12 2.5z"/></svg>
+            </span>
+            <span style="font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.7);">15+ PII types detected</span>
+          </div>
+          <div class="reveal-base js-stagger" data-delay="750" style="display:flex; flex-wrap:wrap; gap:0.75rem;">
+            <button class="pill-btn dark has-arrow hover-spring" onclick="openModal()">
+              <span class="pill-btn-inner hover-spring">
+                Get Started
+                <span class="pill-arrow-badge arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+              </span>
+            </button>
+            <button class="pill-btn outline no-arrow hover-spring" onclick="window.customScrollTo('works')">
+              <span class="pill-btn-inner hover-spring">Learn More</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="hero-right" style="display:flex; flex-direction:column; align-items:flex-start; gap:2rem;">
+          <div id="hero-carousel" class="reveal-base reveal-scale-96 js-stagger" data-delay="400" style="width:100%; max-width:24rem; border-radius:1.25rem; background:rgba(255,255,255,0.7); padding:0.5rem; box-shadow:0 1px 2px 0 rgba(0,0,0,0.05), 0 0 0 1px rgba(230,229,226,0.7); backdrop-filter:blur(12px);">
+            <div onclick="nextCarousel()" style="display:flex; gap:0.5rem; cursor:pointer; border-radius:0.875rem;">
+              <div style="aspect-ratio:1; width:6rem; display:grid; place-items:center; border-radius:0.875rem; background:#0a0a0a; font-size:1.875rem; color:#fff;">
+                <svg viewBox="0 0 48 48" style="width:1em;height:1em;fill:#cf8047;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+              </div>
+              <div style="flex:1; border-radius:0.875rem; background:rgba(241,240,238,0.7); padding:0.75rem; display:flex; flex-direction:column; justify-content:space-between;">
+                <div style="position:relative; min-height:3.25rem; overflow:hidden;">
+                  <div id="carousel-item" style="position:absolute; inset:0; transition:all 0.5s cubic-bezier(0.2,0.8,0.2,1);">
+                    <div style="font-size:0.65rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; color:rgba(17,17,17,0.45);" id="carousel-cap">PII Detection</div>
+                    <div style="max-width:8rem; font-size:0.875rem; font-weight:500; line-height:1.35; margin-top:0.25rem;" id="carousel-title">Powered by Gemini AI.</div>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <div style="display:flex; gap:0.25rem;" id="carousel-dots">
+                    <div class="c-dot" style="height:0.25rem; border-radius:9999px; width:1rem; background:rgba(17,17,17,0.7); transition:all 0.3s;"></div>
+                    <div class="c-dot" style="height:0.25rem; border-radius:9999px; width:0.375rem; background:rgba(17,17,17,0.2); transition:all 0.3s;"></div>
+                    <div class="c-dot" style="height:0.25rem; border-radius:9999px; width:0.375rem; background:rgba(17,17,17,0.2); transition:all 0.3s;"></div>
+                  </div>
+                  <div style="display:flex; gap:0.25rem;">
+                    <button onclick="prevCarousel(event)" class="hover-spring" style="width:1.75rem; height:1.75rem; display:grid; place-items:center; border-radius:9999px; background:#fff; color:rgba(17,17,17,0.7); box-shadow:0 0 0 1px #e6e5e2;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.875rem;height:0.875rem;transform:scaleX(-1);"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                    <button onclick="nextCarousel(event)" class="hover-spring" style="width:1.75rem; height:1.75rem; display:grid; place-items:center; border-radius:9999px; background:#fff; color:rgba(17,17,17,0.7); box-shadow:0 0 0 1px #e6e5e2;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.875rem;height:0.875rem;"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="reveal-base reveal-y-14 js-stagger" data-delay="550" style="width:100%; max-width:24rem;">
+            <div class="partners-label" style="margin-bottom:0.75rem; font-size:0.75rem; font-weight:500; color:rgba(17,17,17,0.45); text-align:left;">Powered by</div>
+            <ul style="display:grid; grid-template-columns:repeat(4,1fr); column-gap:1rem; row-gap:0.75rem;">
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>Gemini AI</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>FastAPI</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>React</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>Tesseract</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>SQLAlchemy</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>PDFPlumber</span></li>
+              <li><span class="hover-spring hover-lift-2px" style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:rgba(17,17,17,0.7); cursor:default; opacity:0.7;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(17,17,17,0.4)" stroke-width="1.6" style="width:0.875rem;height:0.875rem;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>JWT Auth</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div style="flex:1;"></div>
+      
+      <div class="reveal-base js-stagger" data-delay="900" style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; border-top:1px solid rgba(17,17,17,0.1); padding-top:1.25rem; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.025em; color:rgba(17,17,17,0.6);">
+        <div>Built for privacy-first teams</div>
+        <div class="desk-only">End-to-end PII protection</div>
+        <div style="display:inline-flex; gap:0.5rem;">Scroll to explore ↓</div>
+      </div>
+    </div>
+  </section>
+  <style>
+  @media (min-width:640px) { .hero-grid h1 { font-size: 3rem !important; } }
+  @media (min-width:768px) { .hero-grid h1 { font-size: 3.75rem !important; } }
+  @media (min-width:1024px) { 
+    .hero-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:2.5rem; padding-block:2rem; }
+    .hero-left { grid-column: span 7; } .hero-right { grid-column: span 5; align-items:flex-end !important; }
+    .hero-right > div { max-width: 19rem !important; } .partners-label { text-align:right !important; }
+  }
+  @media (max-width:639px) { .desk-only { display:none; } }
+  </style>
+
+  <section id="about" style="background:#fff;">
+    <div class="shell about-grid" style="display:grid; grid-template-columns:1fr; align-items:center; gap:3rem; padding-block:5rem;">
+      <div style="position:relative; min-height:14rem;" class="about-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" class="about-globe" style="position:absolute; left:-1rem; top:50%; transform:translateY(-50%); font-size:12rem; color:rgba(17,17,17,0.1);">
+          <circle cx="12" cy="12" r="9.25"/><path d="M12 2.75c2.6 2.3 4 5.8 4 9.25s-1.4 6.95-4 9.25c-2.6-2.3-4-5.8-4-9.25s1.4-6.95 4-9.25zM2.75 12h18.5"/>
+        </svg>
+        <div class="eyebrow dark" style="position:relative;"><div class="eyebrow-dot"></div> The Platform</div>
+        <div class="reveal-base reveal-y-12 js-io" style="position:absolute; bottom:0; left:0; display:flex; align-items:center; gap:0.75rem; font-size:0.875rem; color:rgba(17,17,17,0.7);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.4" style="width:1.5rem;height:1.5rem;"><circle cx="12" cy="12" r="9.25"/><path d="M12 2.75c2.6 2.3 4 5.8 4 9.25s-1.4 6.95-4 9.25c-2.6-2.3-4-5.8-4-9.25s1.4-6.95 4-9.25zM2.75 12h18.5"/></svg>
+          <span style="max-width:14rem;">Protecting sensitive data across every document type.</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2.5rem;">
+        <h2 id="about-h2" class="js-io" style="font-size:1.5rem; font-weight:500; line-height:1.35; letter-spacing:-0.01em;"></h2>
+        <div class="reveal-base reveal-y-12 js-io" data-delay="200" style="display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:1.5rem; border-top:1px solid #e6e5e2; padding-top:1.5rem;">
+          <div>
+            <div style="font-size:0.875rem; color:rgba(17,17,17,0.45); margin-bottom:0.5rem;">Find us online</div>
+            <div style="display:flex; gap:0.5rem;">
+              <a href="#" class="hover-spring hover-scale-118" style="width:2.25rem; height:2.25rem; display:grid; place-items:center; border-radius:9999px; font-size:0.875rem; background:#b15f2c; color:#fff;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;"><path d="M4 4l16 16M20 4 4 20"/></svg>
+              </a>
+              <a href="#" class="hover-spring hover-scale-118" style="width:2.25rem; height:2.25rem; display:grid; place-items:center; border-radius:9999px; font-size:0.875rem; background:#f1f0ee; color:rgba(17,17,17,0.7);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:1em;height:1em;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
+              </a>
+              <a href="#" class="hover-spring hover-scale-118" style="width:2.25rem; height:2.25rem; display:grid; place-items:center; border-radius:9999px; font-size:0.875rem; background:#f1f0ee; color:rgba(17,17,17,0.7);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:1em;height:1em;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>
+              </a>
+            </div>
+          </div>
+          <button class="pill-btn outline has-arrow hover-spring" onclick="window.customScrollTo('about')">
+            <span class="pill-btn-inner hover-spring">
+              About Us
+              <span class="pill-arrow-badge arrow-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <style>
+  @media (min-width:640px) { .about-globe { font-size: 16rem !important; } #about-h2 { font-size:1.875rem !important; } }
+  @media (min-width:1024px) { 
+    .about-grid { grid-template-columns:1fr 1fr !important; padding-block:7rem !important; } 
+    .about-left { min-height: 20rem !important; } .about-globe { left:-1.5rem !important; font-size:20rem !important; }
+  }
+  </style>
+
+  <section id="create-band" style="background:#fff;">
+    <ul class="shell create-band-flex" style="display:flex; flex-direction:column; gap:0.75rem; padding-block:2.5rem;">
+      <li class="reveal-base reveal-y-28 js-io" data-delay="0" style="flex:1;">
+        <div class="hover-spring hover-scale-103 create-tile" style="display:grid; place-items:center; height:6rem; border-radius:9999px; font-size:1.875rem; font-weight:500; background:#f1f0ee; color:#111;">Upload</div>
+      </li>
+      <li class="reveal-base reveal-y-28 js-io" data-delay="120" style="flex:1;">
+        <div class="hover-spring hover-scale-103 create-tile" style="display:grid; place-items:center; height:6rem; border-radius:9999px; font-size:1.875rem; font-weight:500; background:linear-gradient(to bottom right,#cf8047,#97501f); color:#fff;">Detect</div>
+      </li>
+      <li class="reveal-base reveal-y-28 js-io" data-delay="240" style="flex:1;">
+        <div class="hover-spring hover-scale-103 create-tile" style="display:grid; place-items:center; height:6rem; border-radius:9999px; background:#0a0a0a; color:#fff;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;font-size:2.25rem;"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </div>
+      </li>
+      <li class="reveal-base reveal-y-28 js-io" data-delay="360" style="flex:1;">
+        <div class="hover-spring hover-scale-103 create-tile" style="display:grid; place-items:center; height:6rem; border-radius:9999px; font-size:1.875rem; font-weight:500; background:rgba(241,240,238,0.6); color:rgba(17,17,17,0.35);">Protect</div>
+      </li>
+    </ul>
+  </section>
+  <style>
+  @media (min-width:640px) { .create-band-flex { flex-direction:row !important; gap:1rem !important; } .create-tile { height:10rem !important; font-size:2.25rem !important; } .create-tile svg { font-size:3rem !important; } }
+  </style>
+
+  <section id="works" style="background:#fff;">
+    <div class="shell portfolio-shell" style="padding-bottom:5rem;">
+      <div style="display:flex; justify-content:center;">
+        <div class="eyebrow dark reveal-base reveal-y-10 js-io" style="border:1px solid #e6e5e2; border-radius:9999px; padding:0.375rem 1rem;">
+          <div class="eyebrow-dot"></div> Capabilities
+        </div>
+      </div>
+      <h2 class="js-io h2-center" style="margin:1rem auto 3rem; text-align:center; max-width:16ch; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;">
+        <span class="line-reveal-wrap"><span class="line-reveal-inner">What Cloak Detects</span></span>
+      </h2>
+      <ul class="portfolio-grid" style="display:grid; grid-template-columns:1fr; gap:1.5rem;">
+        <li class="reveal-base reveal-y-48 js-io" data-delay="0">
+          <a href="#" class="card-hover">
+            <article class="hover-spring hover-scale-1012 hover-lift-8px port-card" style="position:relative; min-height:22rem; overflow:hidden; border-radius:2rem; background:#0a0a0a; padding:1.5rem; color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.05);">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.45);">
+                <span>PII Type — Names</span>
+                <div class="card-badge hover-spring" style="width:2.75rem; height:2.75rem; display:grid; place-items:center; border-radius:9999px; background:rgba(255,255,255,0.1); color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.15);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+              </div>
+              <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;">
+                <div style="display:flex; align-items:flex-start;">
+                  <svg viewBox="0 0 48 48" style="width:4.5rem; height:4.5rem; fill:rgba(255,255,255,0.9);"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.6);">®</span>
+                </div>
+              </div>
+              <div class="port-card-bottom" style="position:absolute; inset-inline:1.5rem; bottom:1.5rem;">
+                <h3 class="port-card-h3" style="font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Personal Names</h3>
+                <p style="margin-top:0.5rem; max-width:28rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Full names, aliases, and partial name matches detected across all document types.</p>
+                <div style="margin-top:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem;">
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Names</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Aliases</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">AI Detection</span>
+                </div>
+              </div>
+            </article>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-48 js-io" data-delay="90">
+          <a href="#" class="card-hover">
+            <article class="hover-spring hover-scale-1012 hover-lift-8px port-card" style="position:relative; min-height:22rem; overflow:hidden; border-radius:2rem; background:#0a0a0a; padding:1.5rem; color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.05);">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.45);">
+                <span>PII Type — Contact</span>
+                <div class="card-badge hover-spring" style="width:2.75rem; height:2.75rem; display:grid; place-items:center; border-radius:9999px; background:rgba(255,255,255,0.1); color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.15);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+              </div>
+              <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;">
+                <div style="display:flex; align-items:flex-start;">
+                  <svg viewBox="0 0 48 48" style="width:4.5rem; height:4.5rem; fill:rgba(255,255,255,0.9);"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.6);">®</span>
+                </div>
+              </div>
+              <div class="port-card-bottom" style="position:absolute; inset-inline:1.5rem; bottom:1.5rem;">
+                <h3 class="port-card-h3" style="font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Email & Phone</h3>
+                <p style="margin-top:0.5rem; max-width:28rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Contact information including email addresses, phone numbers, and social handles.</p>
+                <div style="margin-top:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem;">
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Email</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Phone</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">OCR</span>
+                </div>
+              </div>
+            </article>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-48 js-io" data-delay="180">
+          <a href="#" class="card-hover">
+            <article class="hover-spring hover-scale-1012 hover-lift-8px port-card" style="position:relative; min-height:22rem; overflow:hidden; border-radius:2rem; background:#0a0a0a; padding:1.5rem; color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.05);">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.45);">
+                <span>PII Type — IDs</span>
+                <div class="card-badge hover-spring" style="width:2.75rem; height:2.75rem; display:grid; place-items:center; border-radius:9999px; background:rgba(255,255,255,0.1); color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.15);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+              </div>
+              <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;">
+                <div style="display:flex; align-items:flex-start;">
+                  <svg viewBox="0 0 48 48" style="width:4.5rem; height:4.5rem; fill:rgba(255,255,255,0.9);"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.6);">®</span>
+                </div>
+              </div>
+              <div class="port-card-bottom" style="position:absolute; inset-inline:1.5rem; bottom:1.5rem;">
+                <h3 class="port-card-h3" style="font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">SSN & Gov. IDs</h3>
+                <p style="margin-top:0.5rem; max-width:28rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Social security numbers, passport numbers, and national identification documents.</p>
+                <div style="margin-top:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem;">
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">SSN</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Passport</span>
+                </div>
+              </div>
+            </article>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-48 js-io" data-delay="270">
+          <a href="#" class="card-hover">
+            <article class="hover-spring hover-scale-1012 hover-lift-8px port-card" style="position:relative; min-height:22rem; overflow:hidden; border-radius:2rem; background:#0a0a0a; padding:1.5rem; color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.05);">
+              <div style="display:flex; justify-content:space-between; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.45);">
+                <span>PII Type — Financial</span>
+                <div class="card-badge hover-spring" style="width:2.75rem; height:2.75rem; display:grid; place-items:center; border-radius:9999px; background:rgba(255,255,255,0.1); color:#fff; box-shadow:0 0 0 1px rgba(255,255,255,0.15);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+              </div>
+              <div style="position:absolute; inset:0; display:grid; place-items:center; pointer-events:none;">
+                <div style="display:flex; align-items:flex-start;">
+                  <svg viewBox="0 0 48 48" style="width:4.5rem; height:4.5rem; fill:rgba(255,255,255,0.9);"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.6);">®</span>
+                </div>
+              </div>
+              <div class="port-card-bottom" style="position:absolute; inset-inline:1.5rem; bottom:1.5rem;">
+                <h3 class="port-card-h3" style="font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Financial Data</h3>
+                <p style="margin-top:0.5rem; max-width:28rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Credit card numbers, bank accounts, and financial records detected and redacted.</p>
+                <div style="margin-top:1.25rem; display:flex; flex-wrap:wrap; gap:0.5rem;">
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Credit Cards</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Bank Info</span>
+                  <span style="display:inline-flex; border:1px solid rgba(255,255,255,0.25); color:#fff; border-radius:9999px; padding:0.5rem 1rem; font-size:0.875rem;">Redaction</span>
+                </div>
+              </div>
+            </article>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </section>
+  <style>
+  @media (min-width:640px) { .h2-center { font-size: 3rem !important; } .port-card { min-height:26rem !important; padding:2rem !important; } .port-card-bottom { inset-inline:2rem !important; bottom:2rem !important; } .port-card-h3 { font-size:1.875rem !important; } }
+  @media (min-width:768px) { .portfolio-grid { grid-template-columns:1fr 1fr !important; } }
+  @media (min-width:1024px) { .portfolio-shell { padding-bottom:7rem !important; } }
+  </style>
+
+  <section id="services" style="background:#fff;">
+    <div class="shell services-shell" style="padding-block:5rem;">
+      <div class="eyebrow dark reveal-base reveal-y-10 js-io"><div class="eyebrow-dot"></div> How It Works</div>
+      <h2 class="js-io h2-serv" style="margin:1.25rem 0 3rem; max-width:16ch; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;">
+        <span class="line-reveal-wrap"><span class="line-reveal-inner">Three simple steps</span></span>
+      </h2>
+      <ul>
+        <li class="reveal-base reveal-y-24 js-io" data-delay="0">
+          <a href="#" class="hover-spring hover-fill-row" style="display:flex; align-items:center; gap:1rem; border-radius:1.25rem; padding-block:1.5rem;">
+            <div class="s-idx" style="width:1.75rem; font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.4);">01</div>
+            <h3 class="s-h3" style="flex:1; font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Upload Document</h3>
+            <p class="s-p desk-only" style="max-width:20rem; font-size:0.875rem; color:rgba(17,17,17,0.55);">Drag & drop PDF, image, or text files.</p>
+            <div class="row-badge hover-spring s-badge" style="width:2.5rem; height:2.5rem; display:grid; place-items:center; border-radius:9999px; background:#0a0a0a; color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-24 js-io" data-delay="80" style="border-top:1px solid #e6e5e2;">
+          <a href="#" class="hover-spring hover-fill-row" style="display:flex; align-items:center; gap:1rem; border-radius:1.25rem; padding-block:1.5rem;">
+            <div class="s-idx" style="width:1.75rem; font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.4);">02</div>
+            <h3 class="s-h3" style="flex:1; font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">AI Detection</h3>
+            <p class="s-p desk-only" style="max-width:20rem; font-size:0.875rem; color:rgba(17,17,17,0.55);">Gemini AI scans for 15+ PII categories.</p>
+            <div class="row-badge hover-spring s-badge" style="width:2.5rem; height:2.5rem; display:grid; place-items:center; border-radius:9999px; background:#0a0a0a; color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-24 js-io" data-delay="160" style="border-top:1px solid #e6e5e2;">
+          <a href="#" class="hover-spring hover-fill-row" style="display:flex; align-items:center; gap:1rem; border-radius:1.25rem; padding-block:1.5rem;">
+            <div class="s-idx" style="width:1.75rem; font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.4);">03</div>
+            <h3 class="s-h3" style="flex:1; font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Review & Redact</h3>
+            <p class="s-p desk-only" style="max-width:20rem; font-size:0.875rem; color:rgba(17,17,17,0.55);">Toggle PII categories and export clean docs.</p>
+            <div class="row-badge hover-spring s-badge" style="width:2.5rem; height:2.5rem; display:grid; place-items:center; border-radius:9999px; background:#0a0a0a; color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+          </a>
+        </li>
+        <li class="reveal-base reveal-y-24 js-io" data-delay="240" style="border-top:1px solid #e6e5e2;">
+          <a href="#" class="hover-spring hover-fill-row" style="display:flex; align-items:center; gap:1rem; border-radius:1.25rem; padding-block:1.5rem;">
+            <div class="s-idx" style="width:1.75rem; font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.4);">04</div>
+            <h3 class="s-h3" style="flex:1; font-size:1.5rem; font-weight:500; letter-spacing:-0.01em;">Export & Share</h3>
+            <p class="s-p desk-only" style="max-width:20rem; font-size:0.875rem; color:rgba(17,17,17,0.55);">Download redacted PDFs ready for compliance.</p>
+            <div class="row-badge hover-spring s-badge" style="width:2.5rem; height:2.5rem; display:grid; place-items:center; border-radius:9999px; background:#0a0a0a; color:#fff;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></div>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </section>
+  <style>
+  @media (min-width:640px) { 
+    .h2-serv { margin-bottom: 3.5rem !important; font-size: 3rem !important; }
+    .hover-fill-row { gap:1.5rem !important; padding-block:2rem !important; }
+    .s-idx { width: 2.5rem !important; } .s-h3 { font-size: 1.875rem !important; } .s-badge { width: 3rem !important; height: 3rem !important; }
+  }
+  @media (min-width:768px) { .s-h3 { font-size: 2.25rem !important; } }
+  @media (min-width:1024px) { .services-shell { padding-block: 7rem !important; } }
+  </style>
+
+  <section id="stats" style="background:#fff;">
+    <div class="shell stats-shell" style="padding-bottom:5rem;">
+      <div class="reveal-base reveal-scale-99 js-io stat-panel" style="border-radius:2rem; background:#0a0a0a; padding:3rem 1.5rem; color:#fff;">
+        <div class="eyebrow light"><div class="eyebrow-dot"></div> By the numbers</div>
+        <h2 class="js-io stat-h2" style="margin-top:1rem; max-width:20ch; font-size:1.875rem; font-weight:500; letter-spacing:-0.01em;">
+          <span class="line-reveal-wrap"><span class="line-reveal-inner">Built for trust, proven by results.</span></span>
+        </h2>
+        <ul class="stat-grid" style="margin-top:3.5rem; display:grid; grid-template-columns:repeat(2,1fr); column-gap:2rem; row-gap:3rem;">
+          <li class="reveal-base reveal-y-20 js-io" data-delay="0">
+            <div style="font-size:3rem; font-weight:600; letter-spacing:-0.02em;" class="stat-num-wrap"><span class="js-stat" data-target="15">0</span>+</div>
+            <div style="margin-top:0.75rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">PII types detected</div>
+          </li>
+          <li class="reveal-base reveal-y-20 js-io" data-delay="90">
+            <div style="font-size:3rem; font-weight:600; letter-spacing:-0.02em;" class="stat-num-wrap"><span class="js-stat" data-target="99">0</span>%</div>
+            <div style="margin-top:0.75rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Detection accuracy</div>
+          </li>
+          <li class="reveal-base reveal-y-20 js-io" data-delay="180">
+            <div style="font-size:3rem; font-weight:600; letter-spacing:-0.02em;" class="stat-num-wrap"><span class="js-stat" data-target="3">0</span>s</div>
+            <div style="margin-top:0.75rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Average scan time</div>
+          </li>
+          <li class="reveal-base reveal-y-20 js-io" data-delay="270">
+            <div style="font-size:3rem; font-weight:600; letter-spacing:-0.02em;" class="stat-num-wrap"><span class="js-stat" data-target="0">0</span></div>
+            <div style="margin-top:0.75rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">Data stored on servers</div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <style>
+  @media (min-width:640px) { .stat-panel { padding: 4rem 2rem !important; } .stat-num-wrap { font-size: 3.75rem !important; } }
+  @media (min-width:768px) { .stat-panel { padding-inline: 4rem !important; } .stat-h2 { font-size: 2.25rem !important; } .stat-num-wrap { font-size: 4.5rem !important; } }
+  @media (min-width:1024px) { .stats-shell { padding-bottom: 7rem !important; } .stat-grid { grid-template-columns:repeat(4,1fr) !important; } }
+  </style>
+
+</main>
+
+<footer style="position:relative; overflow:hidden; border-radius:2rem 2rem 0 0; background:#0a0a0a; color:#fff;">
+  <div class="shell f-shell" style="position:relative; z-index:10; padding:5rem 1.25rem 2.5rem;">
+    <div class="f-cta" style="display:flex; flex-direction:column; gap:2rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4rem;">
+      <h2 class="js-io f-h2" style="max-width:16ch; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;">
+        <span class="line-reveal-wrap"><span class="line-reveal-inner">Ready to protect your</span></span><br/>
+        <span class="line-reveal-wrap"><span class="line-reveal-inner" style="transition-delay:100ms;">sensitive data?</span></span>
+      </h2>
+      <button class="pill-btn light has-arrow hover-spring" onclick="openModal()">
+        <span class="pill-btn-inner hover-spring">
+          Start Protecting
+          <span class="pill-arrow-badge arrow-up-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+        </span>
+      </button>
+    </div>
+    
+    <div class="f-cols" style="display:grid; grid-template-columns:1fr; gap:3rem; padding-block:4rem;">
+      <div>
+        <div style="display:flex; align-items:center; gap:0.5rem; font-size:1.125rem; font-weight:600;">
+          <svg viewBox="0 0 48 48" style="width:1.25rem; height:1.25rem; fill:currentColor;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+          Cloak
+        </div>
+        <p style="margin-top:1rem; max-width:20rem; font-size:0.875rem; color:rgba(255,255,255,0.55);">An intelligent PII redaction platform powered by Gemini AI. Upload, detect, redact — privacy made simple.</p>
+      </div>
+      <div>
+        <div style="margin-bottom:1rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.4);">Company</div>
+        <ul style="display:flex; flex-direction:column; gap:0.75rem;">
+          <li><a href="#about" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">About</a></li>
+          <li><a href="#careers" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Careers</a></li>
+          <li><a href="#partners" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Partners</a></li>
+          <li><a href="#" onclick="openModal(event)" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <div style="margin-bottom:1rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.4);">Services</div>
+        <ul style="display:flex; flex-direction:column; gap:0.75rem;">
+          <li><a href="#development" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Development</a></li>
+          <li><a href="#design" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Design</a></li>
+          <li><a href="#qa" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Quality Assurance</a></li>
+          <li><a href="#consulting" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Consulting</a></li>
+        </ul>
+      </div>
+      <div>
+        <div style="margin-bottom:1rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.4);">Social</div>
+        <ul style="display:flex; flex-direction:column; gap:0.75rem;">
+          <li><a href="#" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">X / Twitter</a></li>
+          <li><a href="#" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Behance</a></li>
+          <li><a href="#" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">Dribbble</a></li>
+          <li><a href="#" class="anim-link-4px hover-spring" style="display:inline-block; font-size:0.875rem; opacity:0.65;">LinkedIn</a></li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="f-leg" style="display:flex; flex-direction:column; align-items:center; justify-content:space-between; gap:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:2rem; font-size:0.75rem; color:rgba(255,255,255,0.45);">
+      <div>© 2025 Cloak. All rights reserved.</div>
+      <div style="display:flex; gap:1.5rem;">
+        <a href="#privacy" class="anim-link-3px hover-spring" style="display:inline-block; opacity:0.7;">Privacy</a>
+        <a href="#terms" class="anim-link-3px hover-spring" style="display:inline-block; opacity:0.7;">Terms</a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-watermark">CLOAK</div>
+</footer>
+<style>
+@media (min-width:640px) { .f-shell { padding-inline: 2rem !important; } .f-h2 { font-size: 3rem !important; } .f-leg { flex-direction: row !important; } }
+@media (min-width:768px) { .f-h2 { font-size: 3.75rem !important; } .f-cols { grid-template-columns:1fr 1fr !important; } }
+@media (min-width:1024px) { .f-shell { padding-top: 6rem !important; } .f-cta { flex-direction:row !important; align-items:flex-end !important; justify-content:space-between !important; } .f-cols { grid-template-columns:repeat(4,1fr) !important; } }
+</style>
+
+<div id="nav-menu">
+  <div class="shell" style="display:flex; align-items:center; justify-content:space-between; padding:1.25rem; width:100%;">
+    <div style="display:flex; align-items:center; gap:0.5rem; font-size:1.125rem; font-weight:600;">
+      <svg viewBox="0 0 48 48" style="width:1.25rem; height:1.25rem; fill:#cf8047;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+      Cloak
+    </div>
+    <button onclick="closeMenu()" class="hover-spring" style="display:inline-flex; align-items:center; gap:0.5rem; border:1px solid rgba(255,255,255,0.15); border-radius:0.875rem; padding:0.5rem 1rem; font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.05em; color:rgba(255,255,255,0.7);" onmouseover="this.style.borderColor='rgba(255,255,255,.4)'; this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)'; this.style.color='rgba(255,255,255,.7)'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.875rem;height:0.875rem;"><path d="M4 4l16 16M20 4 4 20"/></svg>
+      Close
+    </button>
+  </div>
+  <div class="shell" style="flex:1; display:flex; flex-direction:column; justify-content:center; width:100%;">
+    <ul style="display:flex; flex-direction:column; gap:0.25rem;">
+      <li class="nav-item-enter" style="transition-delay:80ms;"><button onclick="menuNav('home')" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">01</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Home</span></button></li>
+      <li class="nav-item-enter" style="transition-delay:125ms;"><button onclick="menuNav('works')" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">02</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Work</span></button></li>
+      <li class="nav-item-enter" style="transition-delay:170ms;"><button onclick="menuNav('services')" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">03</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Services</span></button></li>
+      <li class="nav-item-enter" style="transition-delay:215ms;"><button onclick="menuNav('about')" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">04</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Studio</span></button></li>
+      <li class="nav-item-enter" style="transition-delay:260ms;"><button onclick="menuNav('careers')" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">05</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Careers</span></button></li>
+      <li class="nav-item-enter" style="transition-delay:305ms;"><button onclick="closeMenu(); openModal();" class="nav-item-group" style="width:100%; display:flex; gap:1rem; padding-block:0.5rem; text-align:left; font-size:2.25rem; font-weight:600; letter-spacing:-0.02em;"><span class="nav-idx" style="font-size:1rem; font-weight:400; color:rgba(255,255,255,0.3); transition:0.3s;">06</span><span class="nav-lbl" style="color:rgba(255,255,255,0.7); transition:0.3s;">Contact</span></button></li>
+    </ul>
+  </div>
+  <div class="shell m-bot" style="display:flex; flex-direction:column; gap:0.75rem; border-top:1px solid rgba(255,255,255,0.1); padding:1.5rem 1.25rem; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.025em; color:rgba(255,255,255,0.45); width:100%;">
+    <div>Local time — <span id="live-time-mob"></span></div>
+    <button onclick="closeMenu(); openModal();" style="text-align:left; color:rgba(255,255,255,0.7); transition:0.3s;" onmouseover="this.style.color='#fff'; this.style.textDecoration='underline';" onmouseout="this.style.color='rgba(255,255,255,0.7)'; this.style.textDecoration='none';">Start a project →</button>
+  </div>
+</div>
+<style>
+@media (min-width:640px) { .nav-item-group { font-size: 3.75rem !important; } .m-bot { flex-direction:row !important; justify-content:space-between !important; } }
+</style>
+
+<div id="request-modal-bg" onclick="if(event.target===this) closeModal()">
+  <div id="request-modal-panel" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <button onclick="closeModal()" class="hover-spring" style="position:absolute; right:1rem; top:1rem; width:2.25rem; height:2.25rem; display:grid; place-items:center; border-radius:9999px; background:#f1f0ee; color:rgba(17,17,17,0.6);" onmouseover="this.style.background='#e3e2df'; this.style.color='#111'" onmouseout="this.style.background='#f1f0ee'; this.style.color='rgba(17,17,17,0.6)'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M4 4l16 16M20 4 4 20"/></svg>
+    </button>
+    
+    <div id="modal-form-view">
+      <div style="margin-bottom:1.5rem; display:flex; flex-direction:column; gap:0.375rem;">
+        <div style="display:inline-flex; align-items:center; gap:0.5rem; font-size:0.875rem; font-weight:500; color:rgba(17,17,17,0.6);">
+          <div style="width:0.375rem; height:0.375rem; border-radius:9999px; background:#b15f2c;"></div> Start a project
+        </div>
+        <h2 class="modal-h2" style="font-size:1.5rem; font-weight:600; letter-spacing:-0.01em;">Tell us what you're building.</h2>
+      </div>
+      <form id="contact-form" onsubmit="submitForm(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <label>
+          <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.025em; color:rgba(17,17,17,0.5); margin-bottom:0.15rem;">Name</div>
+          <input type="text" required placeholder="Your name" class="m-input" />
+        </label>
+        <label>
+          <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.025em; color:rgba(17,17,17,0.5); margin-bottom:0.15rem;">Email</div>
+          <input type="email" required placeholder="you@company.com" class="m-input" />
+        </label>
+        <label>
+          <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.025em; color:rgba(17,17,17,0.5); margin-bottom:0.15rem;">Project</div>
+          <textarea required rows="4" style="resize:none;" placeholder="A few words about your project, timeline, and budget." class="m-input"></textarea>
+        </label>
+        <div style="margin-top:0.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+          <div style="font-size:0.75rem; color:rgba(17,17,17,0.45);">We reply within one business day.</div>
+          <button type="submit" class="pill-btn dark has-arrow hover-spring">
+            <span class="pill-btn-inner hover-spring">
+              <span id="submit-btn-text">Send request</span>
+              <span class="pill-arrow-badge arrow-up-right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;"><path d="M7 17 17 7M8 7h9v9"/></svg></span>
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <div id="modal-success-view" style="display:none; flex-direction:column; align-items:center; text-align:center; padding-block:2rem; gap:1rem;">
+      <div style="width:3.5rem; height:3.5rem; display:grid; place-items:center; border-radius:9999px; background:#0a0a0a; color:#cf8047; font-size:1.5rem;">
+        <svg viewBox="0 0 48 48" style="width:1em; height:1em; fill:currentColor;"><path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z"/></svg>
+      </div>
+      <h2 style="font-size:1.5rem; font-weight:600;">Request received</h2>
+      <p style="max-width:32ch; font-size:0.875rem; color:rgba(17,17,17,0.6);">Thanks for reaching out — we'll get back to you within one business day.</p>
+      <button onclick="closeModal()" class="pill-btn dark no-arrow hover-spring" style="margin-top:0.5rem;">
+        <span class="pill-btn-inner hover-spring">Close</span>
+      </button>
+    </div>
+  </div>
+</div>
+<style>
+@media(min-width:640px) { .modal-h2 { font-size:1.875rem !important; } }
+.m-input { width:100%; border:1px solid #e6e5e2; background:rgba(241,240,238,0.5); border-radius:0.875rem; padding:0.75rem 1rem; font-size:0.875rem; outline:none; transition:all 0.3s; font-family:inherit; }
+.m-input:focus { border-color:rgba(17,17,17,0.3); background:#fff; }
+</style>
+
+<script type="importmap">
+{ "imports": { "lenis": "https://unpkg.com/lenis@1.3.23/dist/lenis.mjs" } }
+</script>
+<script type="module">
+import Lenis from 'lenis';
+window.scrollTo(0, 0);
+
+let scrollEnabled = true;
+const lenis = new Lenis({ smoothWheel: true });
+function raf(t) { if(scrollEnabled) lenis.raf(t); requestAnimationFrame(raf); }
+requestAnimationFrame(raf);
+
+window.stopScroll = function() {
+  scrollEnabled = false;
+  lenis.stop();
+  document.documentElement.style.position = 'relative';
+  document.documentElement.style.overflow = 'hidden';
+  document.documentElement.style.height = '100%';
+}
+window.startScroll = function() {
+  scrollEnabled = true;
+  lenis.start();
+  document.documentElement.style.position = '';
+  document.documentElement.style.overflow = '';
+  document.documentElement.style.height = '';
+}
+
+window.customScrollTo = function(id) {
+  if (id === 'home') { window.scrollTo({top:0, behavior:'smooth'}); return; }
+  const el = document.getElementById(id);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.pageYOffset;
+  window.stopScroll();
+  setTimeout(() => { window.scrollTo({ top, behavior: 'smooth' }); }, 50);
+  setTimeout(() => { window.startScroll(); }, 100);
+}
+
+// Adaptive Grid
+function applyAdaptiveGrid() {
+  const w = window.innerWidth;
+  if (w > 1920) {
+    const widthReduction = ((1920 - w) / 1920) * 100;
+    const size = 16 - (16 * (widthReduction * 0.6666)) / 100;
+    document.documentElement.style.fontSize = size + 'px';
+  } else {
+    document.documentElement.style.removeProperty('font-size');
+  }
+}
+applyAdaptiveGrid(); window.addEventListener('resize', applyAdaptiveGrid);
+
+// Live Clock
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, '0');
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  const timeStr = `${h}:${m}${ampm}`;
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const dateStr = `${now.getDate()} ${monthNames[now.getMonth()]}, ${now.getFullYear()}`;
+  
+  const td = document.getElementById('live-time-desk');
+  const dd = document.getElementById('live-date-desk');
+  const tm = document.getElementById('live-time-mob');
+  if(td) td.textContent = timeStr;
+  if(dd) dd.textContent = dateStr;
+  if(tm) tm.textContent = timeStr;
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// Menu & Modal Global State
+window.openMenu = function() { document.getElementById('nav-menu').classList.add('open'); stopScroll(); }
+window.closeMenu = function() { document.getElementById('nav-menu').classList.remove('open'); startScroll(); }
+window.menuNav = function(id) { closeMenu(); setTimeout(() => customScrollTo(id), 100); }
+window.openModal = function(e) { if(e) e.preventDefault(); document.getElementById('request-modal-bg').classList.add('open'); stopScroll(); }
+window.closeModal = function() { 
+  document.getElementById('request-modal-bg').classList.remove('open'); 
+  startScroll(); 
+  setTimeout(() => {
+    document.getElementById('modal-form-view').style.display = 'block';
+    document.getElementById('modal-success-view').style.display = 'none';
+    document.getElementById('contact-form').reset();
+    document.getElementById('submit-btn-text').textContent = 'Send request';
+  }, 300);
+}
+window.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') {
+    if(document.getElementById('nav-menu').classList.contains('open')) closeMenu();
+    if(document.getElementById('request-modal-bg').classList.contains('open')) closeModal();
+  }
+});
+window.submitForm = function(e) {
+  e.preventDefault();
+  document.getElementById('submit-btn-text').textContent = 'Sending...';
+  setTimeout(() => {
+    document.getElementById('modal-form-view').style.display = 'none';
+    document.getElementById('modal-success-view').style.display = 'flex';
+  }, 600);
+}
+
+// Loader setup & exit
+window.isReady = false;
+let lStart = performance.now();
+const track = document.getElementById('loader-progress-bar');
+const lbl = document.getElementById('loader-progress-text');
+
+function easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+function updateLoader(now) {
+  const p = Math.min((now - lStart) / 1300, 1);
+  const v = easeInOutCubic(p);
+  const pct = Math.round(v * 100);
+  track.style.width = pct + '%';
+  lbl.textContent = pct.toString().padStart(3, '0');
+  if (p < 1) requestAnimationFrame(updateLoader);
+  else {
+    document.getElementById('page-loader').style.transform = 'translateY(-100%)';
+    document.getElementById('loader-content').style.opacity = '0';
+    document.getElementById('loader-content').style.transform = 'translateY(-12px)';
+    setTimeout(() => { 
+      document.getElementById('page-loader').remove(); 
+      window.isReady = true; 
+      startScroll(); 
+      initReveals(); 
+      if(!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+         initCanvas();
+      }
+    }, 700);
+  }
+}
+stopScroll();
+requestAnimationFrame(updateLoader);
+
+// Intersection Reveals
+function initReveals() {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+  
+  document.querySelectorAll('.js-io').forEach(el => {
+    const delay = el.getAttribute('data-delay');
+    if (delay) el.style.transitionDelay = delay + 'ms';
+    io.observe(el);
+  });
+  
+  // Staggered reveals gated by intro ready
+  document.querySelectorAll('.js-stagger').forEach(el => {
+    const delay = el.getAttribute('data-delay') || '0';
+    setTimeout(() => { el.classList.add('is-visible'); }, parseInt(delay));
+  });
+
+  // Word splitting for About H2
+  const aboutH2 = document.getElementById('about-h2');
+  if (aboutH2) {
+    const text = "Cloak uses Gemini AI to automatically ";
+    const text2 = "detect and redact personally identifiable information from your documents, keeping sensitive data safe.";
+    let html = "";
+    let wordIdx = 0;
+    text.split(' ').forEach(w => { if(w) html += `<span class="word-reveal-wrap"><span class="word-reveal-inner" style="transition-delay:${wordIdx++ * 35}ms">${w}</span></span> `; });
+    html += `<span style="color:#8d8d8d">`;
+    text2.split(' ').forEach(w => { if(w) html += `<span class="word-reveal-wrap"><span class="word-reveal-inner" style="transition-delay:${wordIdx++ * 35}ms">${w}</span></span> `; });
+    html += `</span>`;
+    aboutH2.innerHTML = html;
+  }
+  
+  // Stats scroll observer
+  const stats = document.querySelectorAll('.js-stat');
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const wh = window.innerHeight;
+        stats.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          const start = wh;
+          const end = wh / 2;
+          let p = (start - rect.top) / (start - end);
+          if (p < 0) p = 0; if (p > 1) p = 1;
+          const target = parseInt(el.getAttribute('data-target'));
+          el.textContent = Math.round(p * target);
+        });
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }, { passive: true });
+}
+
+// Hero Carousel
+const carouselData = [
+  {cap: "PII Detection", t: "Powered by Gemini AI."},
+  {cap: "Document Scanning", t: "PDF, image, and text."},
+  {cap: "Smart Redaction", t: "One-click protection."}
+];
+let cIdx = 0;
+function updateCarousel(dir) {
+  const item = document.getElementById('carousel-item');
+  item.style.transform = `translateY(${dir*14}px)`;
+  item.style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('carousel-cap').textContent = carouselData[cIdx].cap;
+    document.getElementById('carousel-title').textContent = carouselData[cIdx].t;
+    item.style.transition = 'none';
+    item.style.transform = `translateY(${-dir*14}px)`;
+    item.getBoundingClientRect(); // force reflow
+    item.style.transition = 'all 0.5s cubic-bezier(0.2,0.8,0.2,1)';
+    item.style.transform = 'translateY(0)';
+    item.style.opacity = '1';
+  }, 250);
+  const dots = document.querySelectorAll('.c-dot');
+  dots.forEach((d, i) => {
+    d.style.width = i === cIdx ? '1rem' : '0.375rem';
+    d.style.background = i === cIdx ? 'rgba(17,17,17,0.7)' : 'rgba(17,17,17,0.2)';
+  });
+}
+window.nextCarousel = function(e) { if(e) e.stopPropagation(); cIdx = (cIdx + 1) % 3; updateCarousel(1); }
+window.prevCarousel = function(e) { if(e) e.stopPropagation(); cIdx = (cIdx + 2) % 3; updateCarousel(-1); }
+
+// Liquid Reveal Canvas
+function initCanvas() {
+  const canvas = document.getElementById('liquid-canvas');
+  const container = document.getElementById('liquid-container');
+  if(!canvas || !container) return;
+  const ctx = canvas.getContext('2d');
+  
+  const coverCanvas = document.createElement('canvas');
+  const coverCtx = coverCanvas.getContext('2d');
+  const brushCanvas = document.createElement('canvas');
+  const brushCtx = brushCanvas.getContext('2d');
+  
+  const brushRadius = 143;
+  const decay = 0.016;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let radius = brushRadius * dpr;
+  let diam = Math.ceil(radius * 2);
+  
+  brushCanvas.width = diam;
+  brushCanvas.height = diam;
+  
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = 'https://api.getlayers.ai/storage/v1/object/public/public/assets/lumora-e8b711fc68/hero/before.jpg';
+  
+  let w = 0, h = 0;
+  function resize() {
+    const rect = container.getBoundingClientRect();
+    w = rect.width * dpr;
+    h = rect.height * dpr;
+    canvas.width = w; canvas.height = h;
+    coverCanvas.width = w; coverCanvas.height = h;
+    drawCover();
+  }
+  
+  function drawCover() {
+    if(!img.complete || w === 0) return;
+    const iw = img.width, ih = img.height;
+    const scale = Math.max(w/iw, h/ih);
+    const sw = iw * scale, sh = ih * scale;
+    coverCtx.clearRect(0,0,w,h);
+    coverCtx.drawImage(img, (w-sw)/2, (h-sh)/2, sw, sh);
+  }
+  
+  img.onload = () => { resize(); drawCover(); };
+  window.addEventListener('resize', resize);
+  resize();
+  
+  let points = [];
+  let lastPos = null;
+  let idle = 0;
+  let drawing = false;
+  
+  window.addEventListener('pointermove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const ex = (e.clientX - rect.left) * dpr;
+    const ey = (e.clientY - rect.top) * dpr;
+    
+    if (ex < -radius || ex > w+radius || ey < -radius || ey > h+radius) {
+      lastPos = null; return;
+    }
+    
+    if (!lastPos) {
+      points.push({x:ex, y:ey});
+    } else {
+      const dx = ex - lastPos.x;
+      const dy = ey - lastPos.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const step = Math.max(radius * 0.3, 1);
+      const n = Math.min(Math.ceil(dist / step), 60);
+      for(let i=1; i<=n; i++) {
+        points.push({x: lastPos.x + dx*(i/n), y: lastPos.y + dy*(i/n)});
+      }
+    }
+    lastPos = {x:ex, y:ey};
+    drawing = true;
+  });
+  
+  function tick() {
+    if (points.length > 0) { idle = 0; }
+    else {
+      idle++;
+      if (idle > 120) {
+        if(drawing) { ctx.clearRect(0,0,w,h); drawing = false; }
+        requestAnimationFrame(tick);
+        return;
+      }
+    }
+    
+    const fade = points.length > 0 ? decay : Math.min(decay + idle * 0.004, 0.5);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = `rgba(0,0,0,${fade})`;
+    ctx.fillRect(0,0,w,h);
+    
+    if (points.length > 0) {
+      const pts = points.splice(0, points.length);
+      pts.forEach(p => stamp(p.x, p.y));
+    }
+    
+    requestAnimationFrame(tick);
+  }
+  
+  function stamp(x, y) {
+    brushCtx.globalCompositeOperation = 'source-over';
+    brushCtx.clearRect(0,0,diam,diam);
+    const grad = brushCtx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.82)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    brushCtx.fillStyle = grad;
+    brushCtx.fillRect(0,0,diam,diam);
+    
+    brushCtx.globalCompositeOperation = 'source-in';
+    brushCtx.drawImage(coverCanvas, x-radius, y-radius, diam, diam, 0,0,diam,diam);
+    
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(brushCanvas, x-radius, y-radius);
+  }
+  
+  requestAnimationFrame(tick);
+}
+</script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
