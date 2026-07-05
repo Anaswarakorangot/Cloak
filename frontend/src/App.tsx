@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DocumentViewer } from './components/DocumentViewer';
 import { Dashboard } from './components/Dashboard';
 import { LoginPage } from './components/LoginPage';
@@ -16,6 +16,33 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function MainApp() {
   const state = useDocumentState();
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  React.useEffect(() => {
+    const isLanding = location.pathname === '/' && !isAuthenticated;
+    
+    const landingElements = [
+      document.getElementById('header'),
+      document.getElementById('main'),
+      document.querySelector('footer'),
+      document.getElementById('nav-menu')
+    ];
+    
+    landingElements.forEach(el => {
+      if (el) el.style.display = isLanding ? '' : 'none';
+    });
+
+    const isApp = location.pathname === '/' && isAuthenticated;
+
+    if (isApp) {
+      document.body.style.background = '#0a0a0a';
+      document.body.style.color = '#ffffff';
+    } else {
+      document.body.style.background = '#ffffff';
+      document.body.style.color = '#111111';
+    }
+  }, [location.pathname, isAuthenticated]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -38,9 +65,10 @@ function MainApp() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<LoginPage initialIsLogin={false} />} />
       <Route path="/" element={
-        <ProtectedRoute>
-          {!state.document ? (
+        isAuthenticated ? (
+          !state.document ? (
             <Dashboard onAnalysisComplete={handleAnalysisComplete} />
           ) : (
             <div className="min-h-screen bg-[#0A0A0A] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.25),rgba(255,255,255,0))] flex items-center justify-center p-4 md:p-8">
@@ -76,8 +104,10 @@ function MainApp() {
                 </main>
               </div>
             </div>
-          )}
-        </ProtectedRoute>
+          )
+        ) : (
+          <></>
+        )
       } />
       <Route path="/rules" element={
         <ProtectedRoute>
