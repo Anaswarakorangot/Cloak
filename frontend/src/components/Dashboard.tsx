@@ -54,10 +54,10 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#030303] text-slate-200 font-sans selection:bg-indigo-500/30 relative overflow-hidden">
+    <div className="min-h-screen bg-[#030303] text-slate-200 font-sans selection:bg-orange-500/30 relative overflow-hidden">
       {/* Decorative Background Elements */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-20 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/20 via-purple-500/5 to-transparent blur-3xl rounded-full mix-blend-screen transform scale-x-150"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/20 via-amber-500/5 to-transparent blur-3xl rounded-full mix-blend-screen transform scale-x-150"></div>
       </div>
 
       <header className="bg-[#030303]/80 backdrop-blur-2xl border-b border-white/[0.08] sticky top-0 z-50">
@@ -86,7 +86,7 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
       <motion.main variants={containerVariants} initial="hidden" animate="show" className="max-w-6xl mx-auto px-6 py-12 md:py-16 space-y-12 relative z-10">
         
         <div className="text-center md:text-left">
-          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-4">
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-300 text-xs font-semibold uppercase tracking-wider mb-4">
             <Sparkles size={12} /> Cloak Engine Active
           </motion.div>
           <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-semibold tracking-tight mb-3 text-white">
@@ -121,7 +121,7 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
         <motion.div variants={itemVariants} className="bg-[#0a0a0a] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl relative">
           <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
           <div className="p-8 border-b border-white/[0.06] flex items-center gap-3 relative z-10">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 text-orange-400">
               <FileText size={20} />
             </div>
             <div>

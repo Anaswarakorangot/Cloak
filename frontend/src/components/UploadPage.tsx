@@ -109,7 +109,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             onClick={() => setDetectionMode('gemini')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-300 ${
               detectionMode === 'gemini'
-                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20'
+                ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg shadow-orange-500/20'
                 : 'text-slate-400 hover:text-slate-300'
             }`}
           >
@@ -130,7 +130,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
         </div>
 
         {detectionMode === 'gemini' && (
-          <div className="flex items-center gap-2 text-xs text-indigo-300 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-orange-300 bg-orange-500/5 border border-orange-500/20 rounded-lg px-3 py-2">
             <Sparkles size={12} />
             <span>Gemini 2.5 Flash will analyze your document for PII with explanations for every decision.</span>
           </div>
@@ -175,7 +175,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             onDrop={handleDrop}
             className={`relative group border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer ${
               isDragging
-                ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_40px_rgba(99,102,241,0.2)]'
+                ? 'border-orange-500 bg-orange-500/10 shadow-[0_0_40px_rgba(99,102,241,0.2)]'
                 : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] shadow-2xl'
             }`}
             onClick={() => document.getElementById('file-input')?.click()}
@@ -189,11 +189,11 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             />
             <div className="flex flex-col items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                isDragging ? 'bg-indigo-500/20' : 'bg-white/5 shadow-inner'
+                isDragging ? 'bg-orange-500/20' : 'bg-white/5 shadow-inner'
               }`}>
                 {isLoading
-                  ? <Loader2 size={28} className="text-indigo-400 animate-spin" />
-                  : <Upload size={28} className={isDragging ? 'text-indigo-400' : 'text-slate-400'} />
+                  ? <Loader2 size={28} className="text-orange-400 animate-spin" />
+                  : <Upload size={28} className={isDragging ? 'text-orange-400' : 'text-slate-400'} />
                 }
               </div>
               <div>
@@ -204,7 +204,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
                 ) : (
                   <>
                     <p className="text-slate-200 font-semibold text-lg">
-                      Drop your file here, or <span className="text-indigo-400">browse</span>
+                      Drop your file here, or <span className="text-orange-400">browse</span>
                     </p>
                     <p className="text-slate-500 text-sm mt-1">Supports .txt, .pdf, and images (.png, .jpg)</p>
                   </>
@@ -228,12 +228,12 @@ export function UploadPage({ onAnalysisComplete }: Props) {
               onChange={(e) => setPastedText(e.target.value)}
               placeholder="Paste your document text here..."
               rows={10}
-              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-4 text-slate-300 placeholder-slate-600 text-sm font-mono resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-4 text-slate-300 placeholder-slate-600 text-sm font-mono resize-none focus:outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all"
             />
             <button
               onClick={handlePasteSubmit}
               disabled={!pastedText.trim() || isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isLoading
                 ? <><Loader2 size={18} className="animate-spin" /> Analyzing...</>
