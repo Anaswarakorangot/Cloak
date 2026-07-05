@@ -8,7 +8,7 @@ from app.services.pii_detector import detect_pii
 from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult
 
 # Configure logger
-logger = logging.getLogger("conseal.ocr")
+logger = logging.getLogger("cloak.ocr")
 
 # Lazily import heavy packages to speed up app loading
 try:

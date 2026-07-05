@@ -38,25 +38,29 @@ Social Security Number: 123-45-6789
 
 Project Assignment:
 The client is assigned to Project 492-11-001 for the upcoming quarter. This initiative focuses on expanding our local reach. We also received a brief note from their regional manager, Ananya Sharma, who can be reached directly at 555-0198 regarding the scheduling of the preliminary review meetings and obtaining the necessary sign-offs from the executive board before the end of the fiscal year.
+
+Follow-up Notes:
+Later that week, Ananya called John to discuss the project. John agreed to the terms. Please ensure all documents are sent to john.doe@example.com before Friday.
 """
 
 # Regex patterns for common PII types
 PII_PATTERNS = [
     # Email (highest priority, very specific)
-    (r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', PIIType.EMAIL, 0.99),
+    (r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', PIIType.EMAIL, 0.99, "Matches standard email address format"),
     # SSN: 123-45-6789
-    (r'\b\d{3}-\d{2}-\d{4}\b', PIIType.SSN, 0.97),
+    (r'\b\d{3}-\d{2}-\d{4}\b', PIIType.SSN, 0.97, "Matches structured US Social Security Number format"),
     # Phone: various formats
-    (r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', PIIType.PHONE, 0.90),
-    (r'\b\d{3}-\d{4}\b', PIIType.PHONE, 0.65),
+    (r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', PIIType.PHONE, 0.90, "Matches standard phone number pattern"),
+    (r'\b\d{3}-\d{4}\b', PIIType.PHONE, 0.65, "Matches 7-digit local phone number pattern"),
     # Date of birth patterns like MM/DD/YYYY or YYYY-MM-DD
-    (r'\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b', PIIType.DOB, 0.72),
+    (r'\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b', PIIType.DOB, 0.72, "Matches typical Date of Birth (MM/DD/YYYY) format"),
     # Street address (number + street name)
-    (r'\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Za-z]+){1,3}(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Court|Ct|Place|Pl|Drive)\b\.?', PIIType.ADDRESS, 0.82),
+    (r'\b\d{1,5}\s+[A-Z][a-zA-Z\s,]+(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Court|Ct|Place|Pl|Drive|Boulevard)(?:[^.!?\n]{0,50}?,\s*[A-Z]{2}\s+\d{5})?\b\.?', PIIType.ADDRESS, 0.82, "Matches common street address structure"),
     # Zip codes (standalone 5 or 9 digit)
-    (r'\b\d{5}(?:-\d{4})?\b', PIIType.ADDRESS, 0.55),
-    # Full names: Capitalized First + Last (with optional middle)
-    (r'\b[A-Z][a-z]{1,20}(?:\s+[A-Z]\.?)?\s+[A-Z][a-z]{1,25}\b', PIIType.NAME, 0.75),
+    (r'\b\d{5}(?:-\d{4})?\b', PIIType.ADDRESS, 0.55, "Matches standalone 5-digit or 9-digit zip code format"),
+    # Account numbers (e.g. #8899-0012-4451)
+    (r'\b#?\d{4,}-\d{4,}-\d{4,}\b', PIIType.CUSTOM, 0.90, "Matches typical bank/account number format"),
+    # Removing overly broad name regex to prevent false positives on addresses. We rely on Presidio for NAMES.
 ]
 
 
@@ -92,15 +96,18 @@ def analyze_document_mock() -> DocumentAnalysisResult:
         # False Negatives (Missed PII — low confidence, NOT redacted by default)
         _create_span("Ananya Sharma", PIIType.NAME, 0.45, False),
         _create_span("555-0198", PIIType.PHONE, 0.38, False),
+        
+        # We intentionally MISS the subsequent mentions of "Ananya" and "John" 
+        # so the user can demonstrate the "Manual Redact" auto-propagation feature!
     ]
     
     spans.sort(key=lambda s: s.start)
     return DocumentAnalysisResult(text=MOCK_DOCUMENT_TEXT, spans=spans)
 
 
-def analyze_text_local(text: str) -> DocumentAnalysisResult:
+def analyze_text_local(text: str, custom_rules: list = None) -> DocumentAnalysisResult:
     """
-    Run local PII detection using Microsoft Presidio + Custom Regex.
+    Run local PII detection using Microsoft Presidio + Custom Regex + User Custom Rules.
     Merges both approaches to maximize detection accuracy.
     """
     engine = get_analyzer_engine()
@@ -108,6 +115,27 @@ def analyze_text_local(text: str) -> DocumentAnalysisResult:
     # 1. Get Regex results
     regex_result = _analyze_text_regex_fallback(text)
     combined_spans = regex_result.spans
+    
+    # 1.5. Apply User Custom Rules (Regex)
+    if custom_rules:
+        for rule in custom_rules:
+            try:
+                # Assuming custom_rules is a list of dicts: {'pattern': str, 'type': str, 'name': str}
+                pii_type = PIIType(rule['type'].upper())
+            except ValueError:
+                pii_type = PIIType.CUSTOM
+                
+            for match in re.finditer(rule['pattern'], text):
+                combined_spans.append(PIISpan(
+                    id=str(uuid.uuid4()),
+                    start=match.start(),
+                    end=match.end(),
+                    text=match.group(),
+                    type=pii_type,
+                    confidence=2.0, # Custom rules are highest priority
+                    suggested_redaction=True,
+                    reason=f"Matched custom rule: {rule['name']}"
+                ))
     
     # 2. Get Presidio results (if available)
     if engine is not None:
@@ -139,15 +167,19 @@ def analyze_text_local(text: str) -> DocumentAnalysisResult:
                     if not span_text:
                         continue
 
+                    # Create a human readable reason for Presidio detections
+                    entity_name = r.entity_type.replace('_', ' ').title()
+                    presidio_reason = f"Detected {entity_name} using NLP entity recognition ({int(r.score * 100)}% confidence)"
+
                     combined_spans.append(PIISpan(
                         id=str(uuid.uuid4()),
                         start=r.start,
                         end=r.end,
                         text=span_text,
                         type=pii_type,
-                        confidence=r.score,
+                        confidence=r.score + 1.0, # Presidio wins over normal regex patterns
                         suggested_redaction=r.score >= 0.70,
-                        reason=None
+                        reason=presidio_reason
                     ))
         except Exception as e:
             logger.warning(f"Presidio analysis failed: {e}. Relying solely on regex.")
@@ -165,8 +197,50 @@ def analyze_text_local(text: str) -> DocumentAnalysisResult:
             # Overlapping span
             if deduplicated and span.confidence > deduplicated[-1].confidence:
                 deduplicated[-1] = span
-                last_end = span.end
+                last_end = max(last_end, span.end)
                 
+    # Normalize confidence back to [0, 1] range
+    for span in deduplicated:
+        if span.confidence >= 2.0:
+            span.confidence = 1.0
+        elif span.confidence > 1.0:
+            span.confidence -= 1.0
+                
+    # 4. Entity Coreference / Alias Resolution
+    # Find all unique NAME spans that were detected
+    detected_names = [s.text for s in deduplicated if s.type == PIIType.NAME]
+    
+    # Extract potential aliases (first names, last names)
+    aliases = set()
+    for name in detected_names:
+        parts = [p for p in name.split() if p.istitle() and len(p) > 2]
+        for p in parts:
+            aliases.add(p)
+            
+    # Simple safeguard against common capitalized words
+    stop_words = {"The", "And", "For", "Project", "Client", "Company"}
+    aliases = set(a for a in aliases if a not in stop_words)
+
+    for alias in aliases:
+        for match in re.finditer(rf"\b{re.escape(alias)}\b", text):
+            start, end = match.start(), match.end()
+            is_covered = any(s.start <= start and s.end >= end for s in deduplicated)
+            
+            if not is_covered:
+                deduplicated.append(PIISpan(
+                    id=str(uuid.uuid4()),
+                    start=start,
+                    end=end,
+                    text=alias,
+                    type=PIIType.NAME,
+                    confidence=0.85, 
+                    suggested_redaction=True,
+                    reason=f"Identified as an alias/coreference for a previously detected name."
+                ))
+                
+    # Re-sort after coreference
+    deduplicated.sort(key=lambda x: (x.start, -x.confidence))
+
     return DocumentAnalysisResult(text=text, spans=deduplicated)
 
 
@@ -177,7 +251,7 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
     """
     candidates = []
 
-    for pattern, pii_type, base_confidence in PII_PATTERNS:
+    for pattern, pii_type, base_confidence, reason in PII_PATTERNS:
         for match in re.finditer(pattern, text):
             candidates.append({
                 'start': match.start(),
@@ -185,6 +259,7 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
                 'text': match.group(),
                 'type': pii_type,
                 'confidence': base_confidence,
+                'reason': reason
             })
 
     # Sort by start, then break ties by keeping higher confidence
@@ -213,7 +288,7 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
             type=c['type'],
             confidence=c['confidence'],
             suggested_redaction=c['confidence'] >= 0.70,
-            reason=None  # No Gemini reason for local detection
+            reason=c['reason']
         ))
 
     return DocumentAnalysisResult(text=text, spans=spans)

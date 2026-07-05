@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { RedactionBadge } from './RedactionBadge';
 import { ControlPanel } from './ControlPanel';
 import { PIIType, DocumentAnalysisResult } from '@shared/types';
 import { cn } from '../lib/utils';
 import * as Popover from '@radix-ui/react-popover';
 import { Info, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DocumentViewerProps {
   documentState: {
@@ -15,7 +17,7 @@ interface DocumentViewerProps {
     removeRedaction: (spanId: string) => void;
     addRedaction: (start: number, end: number, text: string, type: PIIType) => void;
     confirmRedaction: (spanId: string) => void;
-    timeOpen: number;
+    startTime: number;
     fileName: string;
     detectionMode: 'gemini' | 'mock';
     setDocument: (doc: DocumentAnalysisResult | null, mode: 'gemini' | 'mock', name: string) => void;
@@ -23,14 +25,18 @@ interface DocumentViewerProps {
 }
 
 export function DocumentViewer({ documentState }: DocumentViewerProps) {
-  const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, timeOpen, fileName } = documentState;
+  const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName } = documentState;
   const textRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
 
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
-      // Hide tooltip if clicking outside text area
-      if (textRef.current && !textRef.current.contains(e.target as Node)) {
+      const tooltipEl = document.getElementById('redaction-tooltip');
+      if (
+        textRef.current && 
+        !textRef.current.contains(e.target as Node) &&
+        (!tooltipEl || !tooltipEl.contains(e.target as Node))
+      ) {
         setTooltip(null);
       }
     };
@@ -64,15 +70,41 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     const text = selection.toString().trim();
     
     if (text.length > 0) {
-      const start = document.text.indexOf(text); 
-      if (start !== -1) {
+      let node = range.startContainer;
+      let parentSpan = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+      while (parentSpan && !parentSpan.hasAttribute('data-index') && parentSpan !== textRef.current) {
+        parentSpan = parentSpan.parentElement;
+      }
+      
+      const dataIndexStr = parentSpan?.getAttribute('data-index');
+      let exactStart = dataIndexStr ? parseInt(dataIndexStr, 10) : -1;
+      
+      if (exactStart !== -1 && node.nodeType === Node.TEXT_NODE) {
+        // startOffset is the character offset within the text node
+        exactStart += range.startOffset;
+      }
+      
+      // Verify text matches exactly at exactStart to handle multiple identical strings
+      if (exactStart !== -1 && document.text.substring(exactStart, exactStart + text.length) === text) {
         setTooltip({
-          x: rect.left + window.scrollX + (rect.width / 2),
-          y: rect.top + window.scrollY - 10,
+          x: rect.left + (rect.width / 2),
+          y: rect.top - 10,
           text,
-          start,
-          end: start + text.length
+          start: exactStart,
+          end: exactStart + text.length
         });
+      } else {
+        // Fallback to indexOf if something went wrong
+        const start = document.text.indexOf(text, Math.max(0, exactStart - 5)); 
+        if (start !== -1) {
+          setTooltip({
+            x: rect.left + (rect.width / 2),
+            y: rect.top - 10,
+            text,
+            start,
+            end: start + text.length
+          });
+        }
       }
     }
   };
@@ -88,10 +120,24 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const renderText = () => {
     let lastIndex = 0;
     const elements: React.ReactNode[] = [];
+    
+    const clusters = new Map<string, number>();
+    const typeCounters = new Map<PIIType, number>();
+
+    document.spans.forEach(span => {
+      if (span.suggested_redaction) {
+        const key = `${span.type}-${span.text.toLowerCase()}`;
+        if (!clusters.has(key)) {
+          const count = (typeCounters.get(span.type) || 0) + 1;
+          typeCounters.set(span.type, count);
+          clusters.set(key, count);
+        }
+      }
+    });
 
     document.spans.forEach((span, i) => {
       if (span.start > lastIndex) {
-        elements.push(<span key={`text-${lastIndex}`}>{document.text.slice(lastIndex, span.start)}</span>);
+        elements.push(<span key={`text-${lastIndex}`} data-index={lastIndex}>{document.text.slice(lastIndex, span.start)}</span>);
       }
 
       const isUncertain = reviewMode && !span.suggested_redaction && span.confidence < 0.7;
@@ -102,7 +148,9 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             key={`span-${span.id}`} 
             span={span} 
             reviewMode={reviewMode} 
-            onRemove={removeRedaction} 
+            onRemove={removeRedaction}
+            detectionMode={documentState.detectionMode}
+            clusterId={clusters.get(`${span.type}-${span.text.toLowerCase()}`)}
           />
         );
       } else if (isUncertain) {
@@ -126,10 +174,16 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Info size={16} className="text-amber-400" />
-                      <h4 className="font-semibold text-slate-100 text-sm">AI Decision</h4>
+                      <h4 className="font-semibold text-slate-100 text-sm">
+                        {documentState.detectionMode === 'gemini' ? 'AI Decision' : 'Detection Engine'}
+                      </h4>
                       {span.reason && (
                         <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold tracking-wide uppercase shadow-[0_0_10px_rgba(245,158,11,0.1)]">
-                          <span className="text-amber-400">✨</span> AI Flagged
+                          {documentState.detectionMode === 'gemini' ? (
+                            <><span className="text-amber-400">✨</span> AI Flagged</>
+                          ) : (
+                            <><span className="text-amber-400">🛡️</span> Local Flagged</>
+                          )}
                         </div>
                       )}
                     </div>
@@ -178,21 +232,40 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     });
 
     if (lastIndex < document.text.length) {
-      elements.push(<span key={`text-${lastIndex}`}>{document.text.slice(lastIndex)}</span>);
+      elements.push(<span key={`text-${lastIndex}`} data-index={lastIndex}>{document.text.slice(lastIndex)}</span>);
     }
 
     return elements;
   };
 
   return (
-    <div className="flex flex-col h-full relative rounded-b-xl border-t-0 shadow-inner bg-slate-900/40">
+    <div className="flex flex-col h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
       <ControlPanel 
         document={document} 
         reviewMode={reviewMode} 
         onToggleReviewMode={toggleReviewMode}
-        timeOpen={timeOpen}
+        startTime={startTime}
         fileName={fileName}
+        onAddRedaction={addRedaction}
       />
+      
+      {documentState.detectionMode === 'gemini' && (
+        <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
+          <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
+          <p className="text-sm text-indigo-200/80 leading-relaxed font-sans">
+            <strong className="text-indigo-300">Privacy Verification:</strong> All structured data (like SSNs and phone numbers) was detected locally and masked with asterisks before this document was sent to Gemini. The AI only evaluated contextual relationships to find hidden PII, ensuring your most sensitive data never left this device.
+          </p>
+        </div>
+      )}
+      
+      {reviewMode && (
+        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-center gap-2">
+          <span className="text-amber-400">💡</span>
+          <p className="text-sm text-amber-200/90 font-medium tracking-wide">
+            <strong>Tip:</strong> Highlight any text to manually redact missed details.
+          </p>
+        </div>
+      )}
       
       <div 
         ref={textRef}
@@ -202,10 +275,17 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         {renderText()}
       </div>
 
-      {tooltip && (
-        <div 
-          className="fixed z-50 bg-slate-800/90 backdrop-blur-md border border-slate-700/50 text-white rounded-lg shadow-2xl px-3 py-2 flex items-center gap-2 transform -translate-x-1/2 -translate-y-full ring-1 ring-white/5"
-          style={{ top: tooltip.y, left: tooltip.x }}
+      <AnimatePresence>
+      {tooltip && createPortal(
+        <motion.div 
+          key="tooltip"
+          initial={{ opacity: 0, y: 10, scale: 0.95, x: "-50%" }}
+          animate={{ opacity: 1, y: 0, scale: 1, x: "-50%" }}
+          exit={{ opacity: 0, y: 10, scale: 0.95, x: "-50%" }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          id="redaction-tooltip"
+          className="fixed z-50 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2 ring-1 ring-white/5"
+          style={{ top: tooltip.y - 45, left: tooltip.x }}
         >
           <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-indigo-300 uppercase tracking-wider">Redact as:</span>
           {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
@@ -220,8 +300,10 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
               {type}
             </button>
           ))}
-        </div>
+        </motion.div>,
+        window.document.body
       )}
+      </AnimatePresence>
     </div>
   );
 }

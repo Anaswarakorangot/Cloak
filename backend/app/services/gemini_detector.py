@@ -8,7 +8,7 @@ from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult
 
 load_dotenv()
 
-logger = logging.getLogger("conseal.gemini")
+logger = logging.getLogger("cloak.gemini")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -45,7 +45,7 @@ def _find_span_offset(text: str, target: str, search_from: int = 0) -> int:
     return idx
 
 
-def analyze_with_gemini(text: str) -> DocumentAnalysisResult:
+def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysisResult:
     """
     Call Gemini API to detect PII in the provided text.
     Falls back to regex-based local detection on any failure.
@@ -53,7 +53,7 @@ def analyze_with_gemini(text: str) -> DocumentAnalysisResult:
     if not GEMINI_API_KEY:
         logger.warning("No GEMINI_API_KEY found. Falling back to local regex detector.")
         from app.services.pii_detector import analyze_text_local
-        return analyze_text_local(text)
+        return analyze_text_local(text, custom_rules=custom_rules)
 
     try:
         from google import genai
@@ -61,7 +61,7 @@ def analyze_with_gemini(text: str) -> DocumentAnalysisResult:
         from app.services.pii_detector import analyze_text_local
         
         # 1. Run local detector FIRST to get the baseline spans
-        local_result = analyze_text_local(text)
+        local_result = analyze_text_local(text, custom_rules=custom_rules)
         
         # 2. Mask the high-confidence local spans with asterisks to protect them from the cloud
         # We replace characters exactly so the string length and indices remain identical.
@@ -169,4 +169,4 @@ def analyze_with_gemini(text: str) -> DocumentAnalysisResult:
     except Exception as e:
         logger.exception(f"Gemini detection failed ({type(e).__name__}): {e}. Falling back to local regex.")
         from app.services.pii_detector import analyze_text_local
-        return analyze_text_local(text)
+        return analyze_text_local(text, custom_rules=custom_rules)

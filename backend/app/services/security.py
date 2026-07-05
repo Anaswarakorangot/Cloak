@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.db_models import User
 
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "conseal_development_secret_key_change_me_in_prod")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "cloak_development_secret_key_change_me_in_prod")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")) # Default 24 hours
 

@@ -10,6 +10,7 @@ class PIIType(str, Enum):
     ADDRESS = "ADDRESS"
     DOB = "DOB"
     UNKNOWN = "UNKNOWN"
+    CUSTOM = "CUSTOM"
 
 class PIISpan(BaseModel):
     id: str

@@ -5,7 +5,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Default to local SQLite database in project directory
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./conseal.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cloak.db")
 
 # Disable same thread restriction only for SQLite for threadpool concurrency compatibility
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}

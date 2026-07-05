@@ -6,6 +6,7 @@ export enum PIIType {
   ADDRESS = 'ADDRESS',
   DOB = 'DOB',
   UNKNOWN = 'UNKNOWN',
+  CUSTOM = 'CUSTOM',
 }
 
 export interface PIISpan {

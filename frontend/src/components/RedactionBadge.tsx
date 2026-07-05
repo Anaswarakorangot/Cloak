@@ -8,6 +8,8 @@ interface Props {
   span: PIISpan;
   reviewMode: boolean;
   onRemove: (id: string) => void;
+  detectionMode?: 'gemini' | 'mock';
+  clusterId?: number;
 }
 
 const getReasoning = (type: PIIType, confidence: number) => {
@@ -16,7 +18,7 @@ const getReasoning = (type: PIIType, confidence: number) => {
   return `Ambiguous context. Flagged as possible ${type.toLowerCase()} for safety.`;
 };
 
-export function RedactionBadge({ span, reviewMode, onRemove }: Props) {
+export function RedactionBadge({ span, reviewMode, onRemove, detectionMode = 'gemini', clusterId }: Props) {
   const [hover, setHover] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -46,7 +48,7 @@ export function RedactionBadge({ span, reviewMode, onRemove }: Props) {
             onMouseLeave={() => setHover(false)}
           >
             {hover ? <Eye size={14} /> : <EyeOff size={14} />}
-            {span.type}
+            {span.type}{clusterId ? ` ${clusterId}` : ''}
           </span>
         </Popover.Trigger>
         
@@ -58,10 +60,16 @@ export function RedactionBadge({ span, reviewMode, onRemove }: Props) {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Info size={16} className="text-indigo-400" />
-                <h4 className="font-semibold text-slate-100 text-sm">AI Decision</h4>
+                <h4 className="font-semibold text-slate-100 text-sm">
+                  {detectionMode === 'gemini' ? 'AI Decision' : 'Detection Engine'}
+                </h4>
                 {span.reason && (
                   <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 rounded text-[10px] font-bold tracking-wide uppercase shadow-[0_0_10px_rgba(99,102,241,0.2)]">
-                    <span className="text-indigo-400">✨</span> Verified by AI
+                    {detectionMode === 'gemini' ? (
+                      <><span className="text-indigo-400">✨</span> Verified by AI</>
+                    ) : (
+                      <><span className="text-indigo-400">🛡️</span> Local Engine</>
+                    )}
                   </div>
                 )}
               </div>

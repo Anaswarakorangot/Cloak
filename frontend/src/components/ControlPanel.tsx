@@ -1,23 +1,34 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DocumentAnalysisResult } from '@shared/types';
 import { ShieldCheck, ShieldAlert, Eye, Layout, Loader2, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { jsPDF } from 'jspdf';
 
 interface Props {
   document: DocumentAnalysisResult | null;
   reviewMode: boolean;
+  reviewMode: boolean;
   onToggleReviewMode: () => void;
-  timeOpen: number;
+  startTime: number;
   fileName?: string;
+  onAddRedaction?: (start: number, end: number, text: string, type: any) => void;
 }
 
-export function ControlPanel({ document, reviewMode, onToggleReviewMode, timeOpen, fileName = 'document' }: Props) {
+export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTime, fileName = 'document', onAddRedaction }: Props) {
   const [showSpeedBump, setShowSpeedBump] = useState(false);
+  const [showManualAdd, setShowManualAdd] = useState(false);
+  const [manualText, setManualText] = useState('');
+  const [manualType, setManualType] = useState('NAME');
   const [exported, setExported] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const { token } = useAuth();
 
   const lowConfidenceUnreviewed = document?.spans.filter(s => s.confidence < 0.7 && !s.suggested_redaction).length || 0;
   
   const handleExportClick = () => {
+    const timeOpen = Date.now() - startTime;
     if (lowConfidenceUnreviewed > 0 || timeOpen < 5000) {
       setShowSpeedBump(true);
     } else {
@@ -25,35 +36,111 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, timeOpe
     }
   };
 
+  const [exportFormat, setExportFormat] = useState<'txt' | 'doc' | 'pdf'>('txt');
+  const [exportName, setExportName] = useState(fileName.replace(/\.[^/.]+$/, ''));
+
   const doExport = async () => {
     setShowSpeedBump(false);
-    setIsExporting(true);
+    setIsExporting(false); // Close the speed bump if open
     
-    try {
-      const response = await fetch('http://localhost:8000/api/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(document),
+    // Compute clusters
+    const clusters = new Map<string, number>();
+    const typeCounters = new Map<string, number>();
+    if (document) {
+      document.spans.forEach(span => {
+        if (span.suggested_redaction) {
+          const key = `${span.type}-${span.text.toLowerCase()}`;
+          if (!clusters.has(key)) {
+            const count = (typeCounters.get(span.type) || 0) + 1;
+            typeCounters.set(span.type, count);
+            clusters.set(key, count);
+          }
+        }
       });
+    }
+
+    if (exportFormat === 'pdf') {
+      const doc = new jsPDF();
+      let pdfText = document?.text || '';
       
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = window.document.createElement('a');
-      a.href = url;
-      const baseName = fileName.replace(/\.[^/.]+$/, '');
-      a.download = `${baseName}-redacted.txt`;
-      window.document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
+      const sortedSpans = [...(document?.spans || [])]
+        .filter(s => s.suggested_redaction)
+        .sort((a, b) => b.start - a.start);
       
+      for (const span of sortedSpans) {
+        // Redacted directly shown as blackout blocks
+        const blackout = '█'.repeat(span.text.length); 
+        pdfText = pdfText.slice(0, span.start) + blackout + pdfText.slice(span.end);
+      }
+
+      doc.setFont('helvetica');
+      doc.setFontSize(11);
+      
+      // Split text to handle word wrapping
+      const splitText = doc.splitTextToSize(pdfText, 180);
+      
+      // Support pagination if text is too long
+      let y = 20;
+      for (let i = 0; i < splitText.length; i++) {
+        if (y > 280) {
+          y = 20;
+          doc.addPage();
+        }
+        doc.text(splitText[i], 15, y);
+        y += 6;
+      }
+      
+      doc.save(`${exportName || 'document'}.pdf`);
       setExported(true);
       setTimeout(() => setExported(false), 3000);
-    } catch (error) {
-      console.error('Export failed:', error);
-    } finally {
-      setIsExporting(false);
+      return;
     }
+
+    let plainText = document?.text || '';
+    const sortedSpans = [...(document?.spans || [])]
+      .filter(s => s.suggested_redaction)
+      .sort((a, b) => b.start - a.start);
+    
+    for (const span of sortedSpans) {
+      const key = `${span.type}-${span.text.toLowerCase()}`;
+      const clusterId = clusters.get(key);
+      const label = `[${span.type}${clusterId ? ` ${clusterId}` : ''}]`;
+      plainText = plainText.slice(0, span.start) + label + plainText.slice(span.end);
+    }
+
+    let fileContent = plainText;
+    let mimeType = 'text/plain';
+    
+    if (exportFormat === 'doc') {
+      const htmlText = plainText.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+      fileContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset='utf-8'><title>${exportName}</title></head>
+<body style="font-family: Arial, sans-serif; font-size: 12pt; color: #000;">
+${htmlText}
+</body>
+</html>`;
+      mimeType = 'application/msword;charset=utf-8';
+    }
+    
+    // Add UTF-8 BOM (\ufeff) to ensure Word parses characters correctly
+    const blob = new Blob(['\ufeff', fileContent], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = `${exportName || 'document'}.${exportFormat}`;
+    window.document.body.appendChild(a);
+    
+    // Slight delay before cleanup prevents strict browsers from aborting the download
+    setTimeout(() => {
+        a.click();
+        setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        }, 1000);
+    }, 100);
+    
+    setExported(true);
+    setTimeout(() => setExported(false), 3000);
   };
 
   return (
@@ -66,6 +153,17 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, timeOpe
           {reviewMode ? <Eye size={16} className="text-indigo-400" /> : <Layout size={16} className="text-indigo-400" />}
           {reviewMode ? 'Preview Final' : 'Back to Review'}
         </button>
+
+        {reviewMode && onAddRedaction && (
+          <button 
+            type="button"
+            onClick={() => setShowManualAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-sm font-semibold text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200 transition-all shadow-inner"
+          >
+            <ShieldAlert size={16} />
+            Manual Redact
+          </button>
+        )}
         
         {reviewMode && lowConfidenceUnreviewed > 0 && (
           <div className="flex items-center text-amber-400 text-sm font-semibold gap-2 bg-amber-500/10 px-4 py-2 rounded-lg border border-amber-500/20 shadow-inner">
@@ -77,39 +175,186 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, timeOpe
 
       <div className="relative">
         <button 
-          onClick={handleExportClick}
-          disabled={isExporting}
+          onClick={() => {
+            const timeOpen = Date.now() - startTime;
+            if (lowConfidenceUnreviewed > 0 || timeOpen < 5000) {
+              setShowSpeedBump(true);
+            } else {
+              setIsExporting(true);
+            }
+          }}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-bold text-sm transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-70"
         >
-          {isExporting ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
-          {exported ? 'Exported Successfully!' : isExporting ? 'Exporting...' : 'Export Safe Document'}
+          <ShieldCheck size={18} />
+          {exported ? 'Exported Successfully!' : 'Export Safe Document'}
         </button>
 
-        {showSpeedBump && (
-          <div className="absolute right-0 top-full mt-4 w-96 bg-slate-900/95 backdrop-blur-xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700/50 p-6 z-50 ring-1 ring-white/10">
-            <h4 className="font-bold text-slate-100 mb-3 flex items-center gap-2 text-lg">
-              <ShieldAlert className="text-amber-500" size={20} /> Wait, are you sure?
-            </h4>
-            <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-              {lowConfidenceUnreviewed > 0 
-                ? `You have ${lowConfidenceUnreviewed} highlighted areas you haven't reviewed yet. Automation bias is real—take a second look.` 
-                : "You reviewed that very quickly. Did you double check for missed PII?"}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setShowSpeedBump(false)}
-                className="px-4 py-2 text-sm font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700 hover:border-slate-600"
-              >
-                Keep Reviewing
-              </button>
-              <button 
-                onClick={doExport}
-                className="px-4 py-2 text-sm font-bold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-200 rounded-lg transition-colors border border-rose-500/20 hover:border-rose-500/40"
-              >
-                Export Anyway
-              </button>
+        {showManualAdd && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
+              <h4 className="font-bold text-slate-100 mb-6 text-xl flex items-center gap-2">
+                <ShieldAlert className="text-indigo-400" size={20} /> Add Manual Redaction
+              </h4>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Text to Redact</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. John Doe"
+                    value={manualText}
+                    onChange={e => setManualText(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-lg shadow-inner px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Category</label>
+                  <select 
+                    value={manualType}
+                    onChange={e => setManualType(e.target.value)}
+                    className="w-full bg-[#111] border border-white/10 rounded-lg shadow-inner px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+                  >
+                    <option value="NAME">NAME</option>
+                    <option value="PHONE">PHONE</option>
+                    <option value="EMAIL">EMAIL</option>
+                    <option value="SSN">SSN</option>
+                    <option value="CUSTOM">CUSTOM (Custom Rule)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowManualAdd(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  disabled={!manualText.trim()}
+                  onClick={() => {
+                    if (onAddRedaction && manualText.trim()) {
+                      onAddRedaction(0, 0, manualText.trim(), manualType as any);
+                      setManualText('');
+                      setShowManualAdd(false);
+                    }
+                  }}
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 shadow-lg shadow-indigo-500/20 border border-white/10 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Redact All Matches
+                </button>
+              </div>
             </div>
-          </div>
+          </div>,
+          window.document.body
+        )}
+
+        {showSpeedBump && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
+              <h4 className="font-bold text-slate-100 mb-3 flex items-center gap-2 text-lg">
+                <ShieldAlert className="text-amber-500" size={20} /> Wait, are you sure?
+              </h4>
+              <p className="text-sm text-slate-300 mb-8 leading-relaxed">
+                {lowConfidenceUnreviewed > 0 
+                  ? `You have ${lowConfidenceUnreviewed} highlighted areas you haven't reviewed yet. Automation bias is real—take a second look.` 
+                  : "You reviewed that very quickly. Did you double check for missed PII?"}
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowSpeedBump(false)}
+                  className="px-4 py-2 text-sm font-bold text-slate-300 bg-white/10 hover:bg-white/20 shadow-sm border border-white/5 rounded-lg transition-colors"
+                >
+                  Keep Reviewing
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowSpeedBump(false);
+                    setIsExporting(true);
+                  }}
+                  className="px-4 py-2 text-sm font-bold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-200 rounded-lg transition-colors border border-rose-500/20 hover:border-rose-500/40"
+                >
+                  Export Anyway
+                </button>
+              </div>
+            </div>
+          </div>,
+          window.document.body
+        )}
+
+        {isExporting && !showSpeedBump && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
+              <h4 className="font-bold text-slate-100 mb-6 text-xl">Export Document</h4>
+              
+              <div className="space-y-5 mb-8">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Filename</label>
+                  <div className="flex bg-white/[0.03] border border-white/10 rounded-lg shadow-inner overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500">
+                    <input 
+                      type="text" 
+                      value={exportName}
+                      onChange={e => setExportName(e.target.value)}
+                      className="flex-1 bg-transparent px-4 py-3 text-sm text-white focus:outline-none"
+                    />
+                    <div className="px-4 py-3 bg-white/5 border-l border-white/10 text-slate-400 font-medium text-sm flex items-center">
+                      .{exportFormat}
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Format</label>
+                  <div className="flex bg-white/[0.03] p-1.5 rounded-lg border border-white/10 shadow-inner">
+                    <button 
+                      type="button"
+                      onClick={() => setExportFormat('txt')}
+                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'txt' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      .TXT
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setExportFormat('doc')}
+                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'doc' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      .DOC
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setExportFormat('pdf')}
+                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'pdf' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      .PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsExporting(false)}
+                  className="px-5 py-2.5 text-sm font-bold text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={doExport}
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 shadow-lg shadow-indigo-500/20 border border-white/10 rounded-lg transition-colors"
+                >
+                  Download
+                </button>
+              </div>
+            </div>
+          </div>,
+          window.document.body
         )}
       </div>
     </div>

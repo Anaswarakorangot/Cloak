@@ -21,6 +21,7 @@ class User(Base):
 
     # Relationships
     batches = relationship("Batch", back_populates="user", cascade="all, delete-orphan")
+    custom_rules = relationship("CustomRule", back_populates="user", cascade="all, delete-orphan")
 
 class Batch(Base):
     __tablename__ = "batches"
@@ -53,3 +54,17 @@ class Document(Base):
 
     # Relationships
     batch = relationship("Batch", back_populates="documents")
+
+class CustomRule(Base):
+    __tablename__ = "custom_rules"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    pattern = Column(String(500), nullable=False)
+    entity_type = Column(String(50), nullable=False)
+    is_active = Column(String(10), default="true", nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    
+    # Relationships
+    user = relationship("User", back_populates="custom_rules")

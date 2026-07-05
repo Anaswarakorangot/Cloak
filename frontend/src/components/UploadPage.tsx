@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { DocumentAnalysisResult } from '@shared/types';
 import { Upload, FileText, Sparkles, Cpu, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   onAnalysisComplete: (result: DocumentAnalysisResult, mode: 'gemini' | 'mock', fileName: string) => void;
@@ -16,6 +18,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
 
   const analyzeText = async (text: string, fileName: string) => {
     setIsLoading(true);
@@ -23,7 +26,10 @@ export function UploadPage({ onAnalysisComplete }: Props) {
     try {
       const response = await fetch('http://localhost:8000/api/analyze-text', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ text, mode: detectionMode }),
       });
       if (!response.ok) {
@@ -48,6 +54,9 @@ export function UploadPage({ onAnalysisComplete }: Props) {
     try {
       const response = await fetch('http://localhost:8000/api/analyze-upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
       if (!response.ok) {
@@ -81,14 +90,16 @@ export function UploadPage({ onAnalysisComplete }: Props) {
   };
 
   const handleUseDemoDoc = () => {
-    fetch('http://localhost:8000/api/analyze')
+    fetch('http://localhost:8000/api/analyze', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(r => r.json())
       .then(data => onAnalysisComplete(data, 'mock', 'Demo Document'))
       .catch(() => setError('Could not load demo document.'));
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.25),rgba(255,255,255,0))] flex flex-col items-center justify-center p-6">
+    <div className="w-full h-full flex flex-col items-center justify-center p-6 lg:p-12">
       
       {/* Header */}
       <div className="text-center mb-10">
@@ -97,7 +108,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             <span className="text-white font-black text-xl">C</span>
           </div>
           <h1 className="text-4xl font-black text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-            Conseal
+            Cloak
           </h1>
         </div>
         <p className="text-slate-400 text-lg max-w-md">
@@ -105,10 +116,10 @@ export function UploadPage({ onAnalysisComplete }: Props) {
         </p>
       </div>
 
-      <div className="w-full max-w-2xl space-y-4">
+      <div className="w-full max-w-2xl space-y-6">
         
         {/* Detection Mode Toggle */}
-        <div className="flex items-center gap-2 p-1 bg-slate-900/60 backdrop-blur-sm rounded-xl border border-slate-800/50">
+        <div className="flex items-center gap-2 p-1 bg-white/[0.02] backdrop-blur-sm rounded-xl border border-white/5">
           <button
             onClick={() => setDetectionMode('gemini')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-300 ${
@@ -136,7 +147,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
         {detectionMode === 'gemini' && (
           <div className="flex items-center gap-2 text-xs text-indigo-300 bg-indigo-500/5 border border-indigo-500/20 rounded-lg px-3 py-2">
             <Sparkles size={12} />
-            <span>Gemini 1.5 Flash will analyze your document for PII with explanations for every decision.</span>
+            <span>Gemini 2.5 Flash will analyze your document for PII with explanations for every decision.</span>
           </div>
         )}
 
@@ -146,8 +157,8 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             onClick={() => setInputMode('upload')}
             className={`px-4 py-2 text-sm font-semibold rounded-lg border transition-all ${
               inputMode === 'upload'
-                ? 'bg-slate-800 border-slate-600 text-white'
-                : 'border-slate-800 text-slate-500 hover:text-slate-400'
+                ? 'bg-white/10 border-white/20 text-white shadow-lg'
+                : 'border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
             Upload File
@@ -156,8 +167,8 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             onClick={() => setInputMode('paste')}
             className={`px-4 py-2 text-sm font-semibold rounded-lg border transition-all ${
               inputMode === 'paste'
-                ? 'bg-slate-800 border-slate-600 text-white'
-                : 'border-slate-800 text-slate-500 hover:text-slate-400'
+                ? 'bg-white/10 border-white/20 text-white shadow-lg'
+                : 'border-white/5 text-slate-400 hover:text-white hover:bg-white/5'
             }`}
           >
             Paste Text
@@ -165,28 +176,35 @@ export function UploadPage({ onAnalysisComplete }: Props) {
         </div>
 
         {/* Upload Zone */}
+        <AnimatePresence mode="wait">
         {inputMode === 'upload' && (
-          <div
+          <motion.div
+            key="upload"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={`relative group border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 cursor-pointer ${
               isDragging
                 ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_40px_rgba(99,102,241,0.2)]'
-                : 'border-slate-700 bg-slate-900/30 hover:border-slate-600 hover:bg-slate-900/50'
+                : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] shadow-2xl'
             }`}
             onClick={() => document.getElementById('file-input')?.click()}
           >
             <input
               id="file-input"
               type="file"
-              accept=".txt,.pdf"
+              accept=".txt,.pdf,image/png,image/jpeg,image/jpg"
               className="hidden"
               onChange={handleFileInput}
             />
             <div className="flex flex-col items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                isDragging ? 'bg-indigo-500/20' : 'bg-slate-800/80'
+                isDragging ? 'bg-indigo-500/20' : 'bg-white/5 shadow-inner'
               }`}>
                 {isLoading
                   ? <Loader2 size={28} className="text-indigo-400 animate-spin" />
@@ -203,23 +221,29 @@ export function UploadPage({ onAnalysisComplete }: Props) {
                     <p className="text-slate-200 font-semibold text-lg">
                       Drop your file here, or <span className="text-indigo-400">browse</span>
                     </p>
-                    <p className="text-slate-500 text-sm mt-1">Supports .txt and .pdf files</p>
+                    <p className="text-slate-500 text-sm mt-1">Supports .txt, .pdf, and images (.png, .jpg)</p>
                   </>
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Paste Zone */}
         {inputMode === 'paste' && (
-          <div className="space-y-3">
+          <motion.div
+            key="paste"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-3"
+          >
             <textarea
               value={pastedText}
               onChange={(e) => setPastedText(e.target.value)}
               placeholder="Paste your document text here..."
               rows={10}
-              className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-slate-300 placeholder-slate-600 text-sm font-mono resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-4 text-slate-300 placeholder-slate-600 text-sm font-mono resize-none focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
             />
             <button
               onClick={handlePasteSubmit}
@@ -231,8 +255,9 @@ export function UploadPage({ onAnalysisComplete }: Props) {
                 : <><ChevronRight size={18} /> Analyze Document</>
               }
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Error */}
         {error && (

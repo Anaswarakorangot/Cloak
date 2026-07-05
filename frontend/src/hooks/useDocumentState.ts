@@ -27,23 +27,46 @@ export function useDocumentState() {
 
   const addRedaction = (start: number, end: number, text: string, type: PIIType) => {
     if (!document) return;
-    const newSpan: PIISpan = {
-      id: Math.random().toString(36).substring(2, 9),
-      start,
-      end,
-      text,
-      type,
-      confidence: 1.0,
-      suggested_redaction: true,
-      reason: 'Manually added by user.'
-    };
-    // Remove any existing overlapping spans
-    const filtered = document.spans.filter(s => !(s.start < end && s.end > start));
-    const newSpans = [...filtered, newSpan].sort((a, b) => a.start - b.start);
-    setDocumentState({
-      ...document,
-      spans: newSpans
-    });
+    
+    const newSpans: PIISpan[] = [];
+    const escapedText = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Removed \b because it fails if the user types a string starting/ending with punctuation (like +1-555-1234)
+    const regex = new RegExp(escapedText, 'gi');
+    
+    let match;
+    while ((match = regex.exec(document.text)) !== null) {
+      const matchStart = match.index;
+      const matchedStr = match[0];
+      const matchEnd = matchStart + matchedStr.length;
+      
+      // Skip if already covered by an existing redaction
+      const isCovered = document.spans.some(s => s.suggested_redaction && s.start <= matchStart && s.end >= matchEnd);
+      if (!isCovered) {
+        newSpans.push({
+          id: Math.random().toString(36).substring(2, 9),
+          start: matchStart,
+          end: matchEnd,
+          text: matchedStr, // Use the actual matched text from the document
+          type,
+          confidence: 1.0,
+          suggested_redaction: true,
+          reason: 'Manually added by user.'
+        });
+      }
+    }
+
+    if (newSpans.length > 0) {
+      let filtered = document.spans;
+      for (const newSpan of newSpans) {
+        // Remove existing spans that overlap with the new ones
+        filtered = filtered.filter(s => !(s.start < newSpan.end && s.end > newSpan.start));
+      }
+      const finalSpans = [...filtered, ...newSpans].sort((a, b) => a.start - b.start);
+      setDocumentState({
+        ...document,
+        spans: finalSpans
+      });
+    }
   };
 
   // Promote an existing uncertain span to a confirmed redaction (fixes false negative)
@@ -70,6 +93,6 @@ export function useDocumentState() {
     setDocument,
     detectionMode,
     fileName,
-    timeOpen: Date.now() - startTime
+    startTime
   };
 }
