@@ -73,13 +73,13 @@ export function LoginPage({ initialIsLogin = true }: { initialIsLogin?: boolean 
       <div 
         className="absolute inset-[-5%] bg-cover bg-center bg-no-repeat transition-transform"
         style={{ 
-          backgroundImage: "url('/login-bg.png')",
+          backgroundImage: "url('/login-bg-v2.png')",
           animation: 'cinematic-pan 20s ease-in-out infinite alternate',
         }}
       ></div>
       
       {/* Dark overlay for text readability and cinematic depth */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#030303]/40 via-[#0a0a0a]/60 to-[#030303]/80 backdrop-blur-[2px]"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-[#030303]/10 via-[#0a0a0a]/30 to-[#030303]/70 backdrop-blur-[1px]"></div>
 
       {/* 3D Interactive Login Card */}
       <div 
