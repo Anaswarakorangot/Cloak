@@ -290,15 +290,6 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     return elements;
   };
 
-  const pendingSpans = document.spans
-    .filter(s => !s.suggested_redaction)
-    .sort((a, b) => {
-       const getSeverity = (t: string) => ['SSN', 'PHONE', 'EMAIL'].includes(t) ? 3 : 1;
-       const riskA = (1 - a.confidence) * getSeverity(a.type);
-       const riskB = (1 - b.confidence) * getSeverity(b.type);
-       return riskB - riskA;
-    });
-
   return (
     <div className="flex h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
       
