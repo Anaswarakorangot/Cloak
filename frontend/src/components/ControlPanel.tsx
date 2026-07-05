@@ -63,6 +63,39 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
 
     if (exportFormat === 'pdf') {
       setIsExporting(true);
+
+      if (fileName.toLowerCase().endsWith('.pdf') && document?.document_id) {
+        try {
+          const response = await fetch('http://localhost:8000/api/export-pdf', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('cloak_token')}`
+            },
+            body: JSON.stringify(document)
+          });
+          
+          if (!response.ok) throw new Error("Failed to export native PDF");
+          
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = window.document.createElement('a');
+          a.href = url;
+          a.download = `redacted_${fileName}`;
+          window.document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a.remove();
+          
+          setIsExporting(false);
+          setExported(true);
+          setShowSummary(true);
+          setTimeout(() => setExported(false), 3000);
+          return;
+        } catch (err) {
+          console.error("Native PDF export failed, falling back to HTML export", err);
+        }
+      }
       const doc = new jsPDF({
         orientation: 'p',
         unit: 'pt',

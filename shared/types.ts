@@ -21,6 +21,7 @@ export interface PIISpan {
 }
 
 export interface DocumentAnalysisResult {
+  document_id?: number;
   text: string;
   spans: PIISpan[];
   classification?: 'LEGAL' | 'MEDICAL' | 'FINANCIAL' | 'GENERAL';

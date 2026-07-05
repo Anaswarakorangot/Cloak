@@ -239,17 +239,25 @@ async def analyze_upload(
     db.commit()
     db.refresh(batch)
     
+    file_path = ""
+    if ext == ".pdf":
+        file_path = f"uploads/{batch.id}_{filename}"
+        with open(file_path, "wb") as f:
+            f.write(raw_bytes)
+            
     doc = Document(
         batch_id=batch.id,
         file_name=filename or "document.txt",
-        file_path="",
+        file_path=file_path,
         status="processed",
         raw_text=extracted_text,
         pii_spans=json.dumps([s.dict() for s in result.spans])
     )
     db.add(doc)
     db.commit()
+    db.refresh(doc)
     
+    result.document_id = doc.id
     return result
 
 
@@ -320,3 +328,48 @@ def export_document(data: DocumentAnalysisResult, current_user: User = Depends(g
             "Content-Disposition": 'attachment; filename="cloak-redacted.txt"'
         }
     )
+
+@app.post("/api/export-pdf")
+def export_pdf_document(data: DocumentAnalysisResult, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Redact the original PDF and return it.
+    """
+    if not data.document_id:
+        raise HTTPException(status_code=400, detail="document_id is required to export original PDF")
+        
+    from app.models.db_models import Document
+    doc = db.query(Document).filter(Document.id == data.document_id, Document.batch.has(user_id=current_user.id)).first()
+    
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Original PDF not found")
+        
+    try:
+        import fitz  # PyMuPDF
+        pdf = fitz.open(doc.file_path)
+        
+        redacted_spans = [span for span in data.spans if span.suggested_redaction]
+        
+        for page in pdf:
+            for span in redacted_spans:
+                # Search for the exact text string in the PDF page
+                text_instances = page.search_for(span.text)
+                for inst in text_instances:
+                    # Draw a black rectangle over the text
+                    page.add_redact_annot(inst, fill=(0, 0, 0))
+            page.apply_redactions()
+            
+        pdf_bytes = pdf.write()
+        pdf.close()
+        
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="redacted_{doc.file_name}"'
+            }
+        )
+    except ImportError:
+        raise HTTPException(status_code=500, detail="PyMuPDF is not installed on the server.")
+    except Exception as e:
+        logger.exception(f"PDF redaction failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to redact PDF")
