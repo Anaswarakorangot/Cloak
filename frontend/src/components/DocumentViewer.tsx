@@ -21,11 +21,13 @@ interface DocumentViewerProps {
     fileName: string;
     detectionMode: 'gemini' | 'mock';
     setDocument: (doc: DocumentAnalysisResult | null, mode: 'gemini' | 'mock', name: string) => void;
+    sessionLog?: any[];
+    undoLastAction?: () => void;
   };
 }
 
 export function DocumentViewer({ documentState }: DocumentViewerProps) {
-  const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName } = documentState;
+  const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName, sessionLog = [], undoLastAction } = documentState;
   const textRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
 
@@ -260,6 +262,25 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           fileName={fileName}
           onAddRedaction={addRedaction}
         />
+
+        {document?.classification && (
+          <div className="bg-slate-800/80 border-b border-slate-700/50 px-6 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm font-semibold">Document Type Detected:</span>
+              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                document.classification === 'LEGAL' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                document.classification === 'MEDICAL' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+                document.classification === 'FINANCIAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                'bg-slate-700/50 text-slate-300 border border-slate-600/50'
+              }`}>
+                {document.classification}
+              </span>
+            </div>
+            {document.classification !== 'GENERAL' && (
+              <span className="text-xs text-slate-500 italic">Thresholds auto-adjusted for {document.classification.toLowerCase()} context</span>
+            )}
+          </div>
+        )}
         
         {documentState.detectionMode === 'gemini' && (
           <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
@@ -301,38 +322,75 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {pendingSpans.length === 0 ? (
-              <div className="text-center p-6 text-slate-500 text-sm">
+              <div className="text-center p-6 text-slate-500 text-sm border-b border-slate-800/60 pb-8 mb-4">
                 <CheckCircle2 size={32} className="mx-auto mb-2 opacity-50" />
                 All clear! No uncertain items pending review.
               </div>
             ) : (
-              pendingSpans.map(span => (
-                <div key={span.id} className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-colors">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">
-                      {span.type} • {Math.round(span.confidence * 100)}%
-                    </span>
+              <div className="space-y-3 border-b border-slate-800/60 pb-6 mb-4">
+                {pendingSpans.map(span => (
+                  <div key={span.id} className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">
+                        {span.type} • {Math.round(span.confidence * 100)}%
+                      </span>
+                    </div>
+                    <p className="text-slate-200 font-medium text-sm mb-3 bg-slate-900/50 p-2 rounded">
+                      "{span.text}"
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => confirmRedaction(span.id)}
+                        className="flex-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded border border-rose-500/30 transition-colors"
+                      >
+                        Redact
+                      </button>
+                      <button
+                        onClick={() => removeRedaction(span.id)}
+                        className="flex-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded border border-emerald-500/30 transition-colors"
+                      >
+                        Ignore
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-slate-200 font-medium text-sm mb-3 bg-slate-900/50 p-2 rounded">
-                    "{span.text}"
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => confirmRedaction(span.id)}
-                      className="flex-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded border border-rose-500/30 transition-colors"
-                    >
-                      Redact
-                    </button>
-                    <button
-                      onClick={() => removeRedaction(span.id)}
-                      className="flex-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded border border-emerald-500/30 transition-colors"
-                    >
-                      Ignore
-                    </button>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
+            
+            {/* Session Log / Decision Trail */}
+            <div className="pt-2 pb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Trail</h4>
+                {sessionLog.length > 0 && (
+                  <button 
+                    onClick={undoLastAction}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+                  >
+                    ⤺ Undo Last
+                  </button>
+                )}
+              </div>
+              <div className="space-y-2">
+                {sessionLog.length === 0 ? (
+                  <p className="text-xs text-slate-600 italic">No manual actions taken yet.</p>
+                ) : (
+                  sessionLog.map(log => (
+                    <div key={log.id} className="flex gap-2 items-start text-xs text-slate-300 bg-slate-900/40 p-2 rounded border border-white/5">
+                      <span className="text-slate-500 shrink-0">
+                        {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
+                      </span>
+                      <span>
+                        <strong className={
+                          log.type === 'AUTO_ACTION' ? 'text-purple-400' :
+                          log.type === 'REMOVE' ? 'text-emerald-400' :
+                          'text-rose-400'
+                        }>{log.type}</strong>: {log.action}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

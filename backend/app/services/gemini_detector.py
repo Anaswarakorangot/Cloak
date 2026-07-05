@@ -170,7 +170,7 @@ def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysi
                     last_end = span.end
 
         logger.info(f"Gemini (Hybrid) detected {len(deduplicated)} PII spans.")
-        return DocumentAnalysisResult(text=text, spans=deduplicated)
+        return DocumentAnalysisResult(text=text, spans=deduplicated, classification=local_result.classification)
 
     except Exception as e:
         logger.exception(f"Gemini detection failed ({type(e).__name__}): {e}. Falling back to local regex.")

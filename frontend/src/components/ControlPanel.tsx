@@ -23,6 +23,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
   const [manualType, setManualType] = useState('NAME');
   const [exported, setExported] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const { token } = useAuth();
 
   const lowConfidenceUnreviewed = document?.spans.filter(s => s.confidence < 0.7 && !s.suggested_redaction).length || 0;
@@ -92,6 +93,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
       
       doc.save(`${exportName || 'document'}.pdf`);
       setExported(true);
+      setShowSummary(true);
       setTimeout(() => setExported(false), 3000);
       return;
     }
@@ -140,6 +142,7 @@ ${htmlText}
     }, 100);
     
     setExported(true);
+    setShowSummary(true);
     setTimeout(() => setExported(false), 3000);
   };
 
@@ -352,6 +355,44 @@ ${htmlText}
                   Download
                 </button>
               </div>
+            </div>
+          </div>,
+          window.document.body
+        )}
+
+        {showSummary && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 mb-4 mx-auto">
+                <CheckCircle2 className="text-emerald-400" size={24} />
+              </div>
+              <h4 className="font-bold text-slate-100 mb-2 text-xl text-center">Export Complete</h4>
+              <p className="text-center text-slate-400 text-sm mb-6">Risk-Framed Summary</p>
+              
+              <div className="space-y-3 mb-6 bg-slate-900/50 rounded-xl p-4 border border-white/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-300">Exposures Caught & Masked</span>
+                  <span className="text-sm font-bold text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
+                    {document?.spans.filter(s => s.suggested_redaction).length || 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-300">Unresolved Risks Exported</span>
+                  <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                    lowConfidenceUnreviewed > 0 ? 'text-rose-400 bg-rose-400/10' : 'text-slate-400 bg-slate-800'
+                  }`}>
+                    {lowConfidenceUnreviewed}
+                  </span>
+                </div>
+              </div>
+              
+              <button 
+                type="button"
+                onClick={() => setShowSummary(false)}
+                className="w-full px-5 py-2.5 text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-md border border-white/10 rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>,
           window.document.body

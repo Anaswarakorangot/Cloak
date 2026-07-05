@@ -23,4 +23,13 @@ export interface PIISpan {
 export interface DocumentAnalysisResult {
   text: string;
   spans: PIISpan[];
+  classification?: 'LEGAL' | 'MEDICAL' | 'FINANCIAL' | 'GENERAL';
+}
+
+export interface SessionLogEntry {
+  id: string;
+  action: string;
+  timestamp: number;
+  type: 'ADD' | 'REMOVE' | 'CONFIRM' | 'AUTO_ACTION';
+  previousSpans?: PIISpan[]; // State of spans before this action for undo
 }

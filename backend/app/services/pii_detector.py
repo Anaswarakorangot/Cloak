@@ -105,12 +105,31 @@ def analyze_document_mock() -> DocumentAnalysisResult:
     return DocumentAnalysisResult(text=MOCK_DOCUMENT_TEXT, spans=spans)
 
 
+def _classify_document(text: str) -> str:
+    text_lower = text.lower()
+    
+    legal_keywords = ['contract', 'liability', 'plaintiff', 'defendant', 'court', 'litigation', 'subpoena']
+    medical_keywords = ['patient', 'diagnosis', 'treatment', 'medical', 'symptom', 'clinic', 'physician', 'hospital']
+    financial_keywords = ['account', 'balance', 'transaction', 'invoice', 'payment', 'fiscal', 'tax', 'credit']
+    
+    scores = {
+        'LEGAL': sum(text_lower.count(k) for k in legal_keywords),
+        'MEDICAL': sum(text_lower.count(k) for k in medical_keywords),
+        'FINANCIAL': sum(text_lower.count(k) for k in financial_keywords)
+    }
+    
+    best_match = max(scores.items(), key=lambda x: x[1])
+    if best_match[1] > 2:  # Threshold to be considered a specific type
+        return best_match[0]
+    return 'GENERAL'
+
 def analyze_text_local(text: str, custom_rules: list = None) -> DocumentAnalysisResult:
     """
     Run local PII detection using Microsoft Presidio + Custom Regex + User Custom Rules.
     Merges both approaches to maximize detection accuracy.
     """
     engine = get_analyzer_engine()
+    classification = _classify_document(text)
     
     # 1. Get Regex results
     regex_result = _analyze_text_regex_fallback(text)
@@ -241,7 +260,7 @@ def analyze_text_local(text: str, custom_rules: list = None) -> DocumentAnalysis
     # Re-sort after coreference
     deduplicated.sort(key=lambda x: (x.start, -x.confidence))
 
-    return DocumentAnalysisResult(text=text, spans=deduplicated)
+    return DocumentAnalysisResult(text=text, spans=deduplicated, classification=classification)
 
 
 def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DocumentAnalysisResult, PIISpan, PIIType } from '@shared/types';
+import { DocumentAnalysisResult, PIISpan, PIIType, SessionLogEntry } from '@shared/types';
 
 export function useDocumentState() {
   const [document, setDocumentState] = useState<DocumentAnalysisResult | null>(null);
@@ -8,17 +8,48 @@ export function useDocumentState() {
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [detectionMode, setDetectionMode] = useState<'gemini' | 'mock'>('mock');
   const [fileName, setFileName] = useState<string>('');
+  const [sessionLog, setSessionLog] = useState<SessionLogEntry[]>([]);
+
+  const addLog = (type: SessionLogEntry['type'], action: string, previousSpans: PIISpan[]) => {
+    setSessionLog(prev => [{
+      id: Math.random().toString(36).substring(2, 9),
+      timestamp: Date.now(),
+      type,
+      action,
+      previousSpans
+    }, ...prev]);
+  };
+
+  const undoLastAction = () => {
+    if (sessionLog.length === 0 || !document) return;
+    const lastAction = sessionLog[0];
+    if (lastAction.previousSpans) {
+      setDocumentState({ ...document, spans: lastAction.previousSpans });
+    }
+    setSessionLog(prev => prev.slice(1));
+  };
 
   const setDocument = (doc: DocumentAnalysisResult, mode: 'gemini' | 'mock', name: string) => {
+    // Apply Tiered Auto-Action: auto-revert very low confidence false positives
+    if (doc && doc.spans) {
+      const originalCount = doc.spans.length;
+      doc.spans = doc.spans.filter(s => s.suggested_redaction || s.confidence >= 0.2);
+      if (doc.spans.length < originalCount) {
+        addLog('AUTO_ACTION', `Auto-reverted ${originalCount - doc.spans.length} obvious false positives (confidence < 20%)`, doc.spans);
+      }
+    }
+    
     setDocumentState(doc);
     setDetectionMode(mode);
     setFileName(name);
     setStartTime(Date.now());
     setReviewMode(true);
+    setSessionLog([]);
   };
 
   const removeRedaction = (spanId: string) => {
     if (!document) return;
+    addLog('REMOVE', 'Ignored a flagged span', document.spans);
     setDocumentState({
       ...document,
       spans: document.spans.filter(s => s.id !== spanId)
@@ -56,6 +87,7 @@ export function useDocumentState() {
     }
 
     if (newSpans.length > 0) {
+      addLog('ADD', `Manually redacted "${text}"`, document.spans);
       let filtered = document.spans;
       for (const newSpan of newSpans) {
         // Remove existing spans that overlap with the new ones
@@ -72,6 +104,7 @@ export function useDocumentState() {
   // Promote an existing uncertain span to a confirmed redaction (fixes false negative)
   const confirmRedaction = (spanId: string) => {
     if (!document) return;
+    addLog('CONFIRM', 'Confirmed an uncertain span', document.spans);
     setDocumentState({
       ...document,
       spans: document.spans.map(s =>
@@ -93,6 +126,8 @@ export function useDocumentState() {
     setDocument,
     detectionMode,
     fileName,
-    startTime
+    startTime,
+    sessionLog,
+    undoLastAction
   };
 }

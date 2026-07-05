@@ -26,3 +26,4 @@ class PIISpan(BaseModel):
 class DocumentAnalysisResult(BaseModel):
     text: str
     spans: List[PIISpan]
+    classification: Optional[str] = "GENERAL"
