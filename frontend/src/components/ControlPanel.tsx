@@ -125,9 +125,10 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
       element.innerHTML = htmlText;
       
       // Temporarily add to DOM so html2canvas can read it
-      element.style.position = 'absolute';
-      element.style.left = '-9999px';
+      element.style.position = 'fixed';
+      element.style.left = '0';
       element.style.top = '0';
+      element.style.zIndex = '-9999';
       window.document.body.appendChild(element);
 
       doc.html(element, {
