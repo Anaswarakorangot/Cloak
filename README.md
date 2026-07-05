@@ -80,3 +80,11 @@ Click **"Quick Demo"** on the dashboard to test the pre-loaded edge cases and ma
 
 ## 📖 Further Reading
 For a detailed breakdown of the database schema and data flow, see our [Project Documentation](PROJECT_DOCUMENTATION.md).
+
+---
+
+<div align="center">
+  <b>Built for the Sprintfour Hackathon</b><br>
+  By Anaswara Korangot<br>
+  <code>CB.SC.U4CSE23405</code>
+</div>
