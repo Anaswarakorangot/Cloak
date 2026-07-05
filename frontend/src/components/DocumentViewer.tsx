@@ -238,42 +238,105 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     return elements;
   };
 
+  const pendingSpans = document.spans
+    .filter(s => !s.suggested_redaction)
+    .sort((a, b) => {
+       const getSeverity = (t: string) => ['SSN', 'PHONE', 'EMAIL'].includes(t) ? 3 : 1;
+       const riskA = (1 - a.confidence) * getSeverity(a.type);
+       const riskB = (1 - b.confidence) * getSeverity(b.type);
+       return riskB - riskA;
+    });
+
   return (
-    <div className="flex flex-col h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
-      <ControlPanel 
-        document={document} 
-        reviewMode={reviewMode} 
-        onToggleReviewMode={toggleReviewMode}
-        startTime={startTime}
-        fileName={fileName}
-        onAddRedaction={addRedaction}
-      />
+    <div className="flex h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
       
-      {documentState.detectionMode === 'gemini' && (
-        <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
-          <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
-          <p className="text-sm text-indigo-200/80 leading-relaxed font-sans">
-            <strong className="text-indigo-300">Privacy Verification:</strong> All structured data (like SSNs and phone numbers) was detected locally and masked with asterisks before this document was sent to Gemini. The AI only evaluated contextual relationships to find hidden PII, ensuring your most sensitive data never left this device.
-          </p>
+      {/* Main Document Area */}
+      <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+        <ControlPanel 
+          document={document} 
+          reviewMode={reviewMode} 
+          onToggleReviewMode={toggleReviewMode}
+          startTime={startTime}
+          fileName={fileName}
+          onAddRedaction={addRedaction}
+        />
+        
+        {documentState.detectionMode === 'gemini' && (
+          <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
+            <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
+            <p className="text-sm text-indigo-200/80 leading-relaxed font-sans">
+              <strong className="text-indigo-300">Privacy Verification:</strong> All structured data (like SSNs and phone numbers) was detected locally and masked with asterisks before this document was sent to Gemini. The AI only evaluated contextual relationships to find hidden PII, ensuring your most sensitive data never left this device.
+            </p>
+          </div>
+        )}
+        
+        {reviewMode && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-center gap-2">
+            <span className="text-amber-400">💡</span>
+            <p className="text-sm text-amber-200/90 font-medium tracking-wide">
+              <strong>Tip:</strong> Highlight any text to manually redact missed details.
+            </p>
+          </div>
+        )}
+        
+        <div 
+          ref={textRef}
+          className="p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
+          onMouseUp={handleSelection}
+        >
+          {renderText()}
         </div>
-      )}
-      
-      {reviewMode && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-center gap-2">
-          <span className="text-amber-400">💡</span>
-          <p className="text-sm text-amber-200/90 font-medium tracking-wide">
-            <strong>Tip:</strong> Highlight any text to manually redact missed details.
-          </p>
-        </div>
-      )}
-      
-      <div 
-        ref={textRef}
-        className="p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200"
-        onMouseUp={handleSelection}
-      >
-        {renderText()}
       </div>
+
+      {/* Risk-Ordered Review Queue Sidebar */}
+      {reviewMode && (
+        <div className="w-80 bg-slate-900/60 flex flex-col shrink-0 rounded-br-3xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800/60 bg-slate-900/80">
+            <h3 className="font-bold text-slate-200 flex items-center gap-2">
+              <ShieldAlert className="text-amber-400" size={18} />
+              Review Queue
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Sorted by risk (Uncertainty × Severity)</p>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {pendingSpans.length === 0 ? (
+              <div className="text-center p-6 text-slate-500 text-sm">
+                <CheckCircle2 size={32} className="mx-auto mb-2 opacity-50" />
+                All clear! No uncertain items pending review.
+              </div>
+            ) : (
+              pendingSpans.map(span => (
+                <div key={span.id} className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">
+                      {span.type} • {Math.round(span.confidence * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-slate-200 font-medium text-sm mb-3 bg-slate-900/50 p-2 rounded">
+                    "{span.text}"
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => confirmRedaction(span.id)}
+                      className="flex-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded border border-rose-500/30 transition-colors"
+                    >
+                      Redact
+                    </button>
+                    <button
+                      onClick={() => removeRedaction(span.id)}
+                      className="flex-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded border border-emerald-500/30 transition-colors"
+                    >
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
 
       <AnimatePresence>
       {tooltip && createPortal(

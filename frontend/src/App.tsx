@@ -44,7 +44,7 @@ function MainApp() {
             <Dashboard onAnalysisComplete={handleAnalysisComplete} />
           ) : (
             <div className="min-h-screen bg-[#0A0A0A] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.25),rgba(255,255,255,0))] flex items-center justify-center p-4 md:p-8">
-              <div className="max-w-4xl w-full bg-slate-950/40 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 rounded-2xl border border-slate-800/60 overflow-hidden ring-1 ring-white/10">
+              <div className="max-w-6xl w-full bg-slate-950/40 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 rounded-2xl border border-slate-800/60 overflow-hidden ring-1 ring-white/10">
                 <header className="bg-gradient-to-r from-slate-900/80 to-slate-950/80 border-b border-slate-800/60 p-5 flex items-center justify-between px-6 backdrop-blur-md">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">

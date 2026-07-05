@@ -63,6 +63,12 @@ def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysi
         # 1. Run local detector FIRST to get the baseline spans
         local_result = analyze_text_local(text, custom_rules=custom_rules)
         
+        # Add the privacy justification note to local spans
+        for span in local_result.spans:
+            if span.suggested_redaction:
+                span.reason = f"🔒 Secured Locally: {span.type.value} was masked before sending document to Gemini cloud AI."
+
+        
         # 2. Mask the high-confidence local spans with asterisks to protect them from the cloud
         # We replace characters exactly so the string length and indices remain identical.
         masked_text_chars = list(text)
