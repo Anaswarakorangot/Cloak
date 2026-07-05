@@ -64,9 +64,13 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
     if (exportFormat === 'pdf') {
       setIsExporting(true);
 
-      if (fileName.toLowerCase().endsWith('.pdf') && document?.document_id) {
+      const isPdf = fileName.toLowerCase().endsWith('.pdf');
+      const isImg = fileName.toLowerCase().match(/\.(png|jpg|jpeg)$/);
+
+      if ((isPdf || isImg) && document?.document_id) {
         try {
-          const response = await fetch('http://localhost:8000/api/export-pdf', {
+          const endpoint = isImg ? 'http://localhost:8000/api/export-image' : 'http://localhost:8000/api/export-pdf';
+          const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
@@ -75,13 +79,14 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
             body: JSON.stringify(document)
           });
           
-          if (!response.ok) throw new Error("Failed to export native PDF");
+          if (!response.ok) throw new Error("Failed to export native file");
           
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
           const a = window.document.createElement('a');
           a.href = url;
-          a.download = `redacted_${fileName}`;
+          const ext = isImg ? fileName.split('.').pop() : 'pdf';
+          a.download = `redacted_${exportName || 'document'}.${ext}`;
           window.document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
@@ -93,7 +98,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
           setTimeout(() => setExported(false), 3000);
           return;
         } catch (err) {
-          console.error("Native PDF export failed, falling back to HTML export", err);
+          console.error("Native export failed, falling back to HTML export", err);
         }
       }
       const doc = new jsPDF({
@@ -454,7 +459,7 @@ by the Cloak platform. All structured data was secured locally.
                       onClick={() => setExportFormat('pdf')}
                       className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'pdf' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
                     >
-                      .PDF
+                      {fileName.toLowerCase().match(/\.(png|jpg|jpeg)$/) ? 'ORIGINAL' : '.PDF'}
                     </button>
                   </div>
                 </div>

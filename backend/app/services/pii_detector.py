@@ -123,7 +123,7 @@ def _classify_document(text: str) -> str:
         return best_match[0]
     return 'GENERAL'
 
-def analyze_text_local(text: str, custom_rules: list = None) -> DocumentAnalysisResult:
+def analyze_text_local(text: str, custom_rules: list = None, knowledge_graph: list = None) -> DocumentAnalysisResult:
     """
     Run local PII detection using Microsoft Presidio + Custom Regex + User Custom Rules.
     Merges both approaches to maximize detection accuracy.
@@ -155,7 +155,29 @@ def analyze_text_local(text: str, custom_rules: list = None) -> DocumentAnalysis
                     suggested_redaction=True,
                     reason=f"Matched custom rule: {rule['name']}"
                 ))
-    
+                
+    # 1.75 Apply Knowledge Graph Connections
+    if knowledge_graph:
+        for kg in knowledge_graph:
+            val = kg.get('related_value')
+            if not val: continue
+            for match in re.finditer(re.escape(val), text, re.IGNORECASE):
+                try:
+                    pii_type = PIIType(kg.get('related_type', 'UNKNOWN'))
+                except ValueError:
+                    pii_type = PIIType.UNKNOWN
+                
+                combined_spans.append(PIISpan(
+                    id=str(uuid.uuid4()),
+                    start=match.start(),
+                    end=match.end(),
+                    text=match.group(),
+                    type=pii_type,
+                    confidence=1.9, # High priority, right below custom rules
+                    suggested_redaction=True,
+                    reason=f"Known Entity (Knowledge Graph): Historically linked to {kg.get('primary_value')}"
+                ))
+
     # 2. Get Presidio results (if available)
     if engine is not None:
         PRESIDIO_TO_PII = {

@@ -49,6 +49,7 @@ class Document(Base):
     raw_text = Column(Text, nullable=True)
     redacted_text = Column(Text, nullable=True)
     pii_spans = Column(JSON, nullable=True)
+    layout_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -68,3 +69,16 @@ class CustomRule(Base):
     
     # Relationships
     user = relationship("User", back_populates="custom_rules")
+
+class KnowledgeGraph(Base):
+    __tablename__ = "knowledge_graph"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    primary_entity_type = Column(String(50), nullable=False, default="NAME") 
+    primary_entity_value = Column(String(255), nullable=False) 
+    related_entity_type = Column(String(50), nullable=False) 
+    related_entity_value = Column(String(255), nullable=False) 
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    
+    user = relationship("User")

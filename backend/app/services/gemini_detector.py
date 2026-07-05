@@ -45,7 +45,7 @@ def _find_span_offset(text: str, target: str, search_from: int = 0) -> int:
     return idx
 
 
-def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysisResult:
+def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: list = None) -> DocumentAnalysisResult:
     """
     Call Gemini API to detect PII in the provided text.
     Falls back to regex-based local detection on any failure.
@@ -53,7 +53,7 @@ def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysi
     if not GEMINI_API_KEY:
         logger.warning("No GEMINI_API_KEY found. Falling back to local regex detector.")
         from app.services.pii_detector import analyze_text_local
-        return analyze_text_local(text, custom_rules=custom_rules)
+        return analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=knowledge_graph)
 
     try:
         from google import genai
@@ -61,7 +61,7 @@ def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysi
         from app.services.pii_detector import analyze_text_local
         
         # 1. Run local detector FIRST to get the baseline spans
-        local_result = analyze_text_local(text, custom_rules=custom_rules)
+        local_result = analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=knowledge_graph)
         
         # Add the privacy justification note to local spans
         for span in local_result.spans:
@@ -175,4 +175,4 @@ def analyze_with_gemini(text: str, custom_rules: list = None) -> DocumentAnalysi
     except Exception as e:
         logger.exception(f"Gemini detection failed ({type(e).__name__}): {e}. Falling back to local regex.")
         from app.services.pii_detector import analyze_text_local
-        return analyze_text_local(text, custom_rules=custom_rules)
+        return analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=knowledge_graph)

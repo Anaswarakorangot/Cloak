@@ -97,7 +97,33 @@ def get_documents(db: Session = Depends(get_db), current_user: User = Depends(ge
             "redaction_count": redaction_count
         })
         
+        
     return result
+
+
+def _populate_knowledge_graph(db: Session, user_id: str, spans: list):
+    from app.models.db_models import KnowledgeGraph
+    from app.models.pii_schemas import PIIType
+    
+    names = list(set([s.text for s in spans if s.type == PIIType.NAME and s.confidence >= 0.7]))
+    if len(names) == 1:
+        primary_name = names[0]
+        for s in spans:
+            if s.type in (PIIType.PHONE, PIIType.EMAIL, PIIType.SSN, PIIType.ADDRESS) and s.confidence >= 0.7:
+                exists = db.query(KnowledgeGraph).filter(
+                    KnowledgeGraph.user_id == user_id,
+                    KnowledgeGraph.related_entity_value == s.text
+                ).first()
+                if not exists:
+                    kg = KnowledgeGraph(
+                        user_id=user_id,
+                        primary_entity_type="NAME",
+                        primary_entity_value=primary_name,
+                        related_entity_type=s.type.value,
+                        related_entity_value=s.text
+                    )
+                    db.add(kg)
+        db.commit()
 
 
 @app.get("/api/analyze", response_model=DocumentAnalysisResult)
@@ -105,10 +131,16 @@ def analyze_document_default(current_user: User = Depends(get_current_user), db:
     """Returns the default mock document analysis using the real local detector."""
     from app.services.pii_detector import MOCK_DOCUMENT_TEXT, analyze_text_local
     
-    from app.models.db_models import CustomRule
+    from app.models.db_models import CustomRule, KnowledgeGraph
     db_rules = db.query(CustomRule).filter(CustomRule.user_id == current_user.id, CustomRule.is_active == "true").all()
     custom_rules = [{"pattern": r.pattern, "type": r.entity_type, "name": r.name} for r in db_rules]
-    result = analyze_text_local(MOCK_DOCUMENT_TEXT, custom_rules=custom_rules)
+    
+    db_kg = db.query(KnowledgeGraph).filter(KnowledgeGraph.user_id == current_user.id).all()
+    kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
+    
+    result = analyze_text_local(MOCK_DOCUMENT_TEXT, custom_rules=custom_rules, knowledge_graph=kg_data)
+    
+    _populate_knowledge_graph(db, current_user.id, result.spans)
     
     import json
     from app.models.db_models import Batch, Document
@@ -144,16 +176,21 @@ async def analyze_text(body: dict, current_user: User = Depends(get_current_user
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
         
     # Fetch user custom rules
-    from app.models.db_models import CustomRule
+    from app.models.db_models import CustomRule, KnowledgeGraph
     db_rules = db.query(CustomRule).filter(CustomRule.user_id == current_user.id, CustomRule.is_active == "true").all()
     custom_rules = [{"pattern": r.pattern, "type": r.entity_type, "name": r.name} for r in db_rules]
 
+    db_kg = db.query(KnowledgeGraph).filter(KnowledgeGraph.user_id == current_user.id).all()
+    kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
+
     if mode == "gemini":
         from app.services.gemini_detector import analyze_with_gemini
-        result = analyze_with_gemini(text, custom_rules=custom_rules)
+        result = analyze_with_gemini(text, custom_rules=custom_rules, knowledge_graph=kg_data)
     else:
         # Mock mode: run real regex detection on the actual pasted text
-        result = analyze_text_local(text, custom_rules=custom_rules)
+        result = analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        
+    _populate_knowledge_graph(db, current_user.id, result.spans)
         
     import json
     from app.models.db_models import Batch, Document
@@ -197,6 +234,7 @@ async def analyze_upload(
 
     # Extract text
     extracted_text = ""
+    layout_data = None
     try:
         if ext == ".txt" or "text/plain" in content_type:
             # Try UTF-8 first then latin-1
@@ -209,7 +247,7 @@ async def analyze_upload(
         elif ext == ".pdf" or "pdf" in content_type:
             extracted_text = _extract_pdf_text(raw_bytes)
         elif ext in [".png", ".jpg", ".jpeg"] or "image/" in content_type:
-            extracted_text = _extract_image_text(raw_bytes)
+            extracted_text, layout_data = _extract_image_text_and_layout(raw_bytes)
         else:
             # Try as plain text
             extracted_text = raw_bytes.decode("utf-8", errors="replace")
@@ -220,17 +258,22 @@ async def analyze_upload(
     if not extracted_text.strip():
         raise HTTPException(status_code=422, detail="No text could be extracted from the file.")
     # Fetch user custom rules
-    from app.models.db_models import CustomRule
+    from app.models.db_models import CustomRule, KnowledgeGraph
     db_rules = db.query(CustomRule).filter(CustomRule.user_id == current_user.id, CustomRule.is_active == "true").all()
     custom_rules = [{"pattern": r.pattern, "type": r.entity_type, "name": r.name} for r in db_rules]
+    
+    db_kg = db.query(KnowledgeGraph).filter(KnowledgeGraph.user_id == current_user.id).all()
+    kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
 
     # Detect PII
     if mode == "gemini":
         from app.services.gemini_detector import analyze_with_gemini
-        result = analyze_with_gemini(extracted_text, custom_rules=custom_rules)
+        result = analyze_with_gemini(extracted_text, custom_rules=custom_rules, knowledge_graph=kg_data)
     else:
         # Mock mode: run real regex detection on the uploaded file's text
-        result = analyze_text_local(extracted_text, custom_rules=custom_rules)
+        result = analyze_text_local(extracted_text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        
+    _populate_knowledge_graph(db, current_user.id, result.spans)
         
     import json
     from app.models.db_models import Batch, Document
@@ -240,7 +283,7 @@ async def analyze_upload(
     db.refresh(batch)
     
     file_path = ""
-    if ext == ".pdf":
+    if ext in [".pdf", ".png", ".jpg", ".jpeg"]:
         os.makedirs("uploads", exist_ok=True)
         file_path = f"uploads/{batch.id}_{filename}"
         with open(file_path, "wb") as f:
@@ -252,7 +295,8 @@ async def analyze_upload(
         file_path=file_path,
         status="processed",
         raw_text=extracted_text,
-        pii_spans=json.dumps([s.dict() for s in result.spans])
+        pii_spans=json.dumps([s.dict() for s in result.spans]),
+        layout_data=json.dumps(layout_data) if layout_data else None
     )
     db.add(doc)
     db.commit()
@@ -290,14 +334,42 @@ def _extract_pdf_text(raw_bytes: bytes) -> str:
 
     raise ValueError("Could not extract text from PDF.")
 
-def _extract_image_text(raw_bytes: bytes) -> str:
-    """Extract text from an image directly using pytesseract."""
+def _extract_image_text_and_layout(raw_bytes: bytes):
+    """Extract text and layout from an image using pytesseract."""
     try:
         import pytesseract
         from PIL import Image
         import io
         img = Image.open(io.BytesIO(raw_bytes))
-        return pytesseract.image_to_string(img)
+        data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
+        
+        words = []
+        layout = []
+        current_idx = 0
+        
+        for i in range(len(data['text'])):
+            word = data['text'][i]
+            if not word.strip():
+                continue
+                
+            words.append(word)
+            start_idx = current_idx
+            end_idx = current_idx + len(word)
+            layout.append({
+                'word': word,
+                'start': start_idx,
+                'end': end_idx,
+                'box': {
+                    'left': data['left'][i],
+                    'top': data['top'][i],
+                    'width': data['width'][i],
+                    'height': data['height'][i]
+                }
+            })
+            current_idx = end_idx + 1 # +1 for the space
+            
+        text = " ".join(words)
+        return text, layout
     except Exception as e:
         logger.exception(f"Image OCR failed: {e}")
         raise ValueError(f"Could not extract text from image: {e}")
@@ -388,3 +460,61 @@ def get_original_pdf(doc_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Original PDF not found")
         
     return FileResponse(doc.file_path, media_type="application/pdf")
+
+@app.post("/api/export-image")
+def export_image_document(data: DocumentAnalysisResult, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Redact the original image and return it.
+    """
+    if not data.document_id:
+        raise HTTPException(status_code=400, detail="document_id is required to export original image")
+        
+    from app.models.db_models import Document
+    doc = db.query(Document).filter(Document.id == data.document_id, Document.batch.has(user_id=current_user.id)).first()
+    
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Original image not found")
+        
+    if not doc.layout_data:
+        raise HTTPException(status_code=400, detail="Document does not have image layout data")
+        
+    try:
+        from PIL import Image, ImageDraw
+        import json
+        
+        img = Image.open(doc.file_path)
+        draw = ImageDraw.Draw(img)
+        
+        layout = json.loads(doc.layout_data)
+        redacted_spans = [span for span in data.spans if span.suggested_redaction]
+        
+        for span in redacted_spans:
+            s_start = span.start
+            s_end = span.end
+            
+            for word_box in layout:
+                w_start = word_box['start']
+                w_end = word_box['end']
+                
+                if max(s_start, w_start) < min(s_end, w_end):
+                    box = word_box['box']
+                    draw.rectangle([box['left'], box['top'], box['left'] + box['width'], box['top'] + box['height']], fill="black")
+                    
+        img_bytes = io.BytesIO()
+        ext = os.path.splitext(doc.file_name)[1].lower()
+        format = "PNG" if ext == ".png" else "JPEG"
+        img.save(img_bytes, format=format)
+        img_bytes.seek(0)
+        
+        media_type = f"image/{format.lower()}"
+        
+        return StreamingResponse(
+            img_bytes,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="redacted_{doc.file_name}"'
+            }
+        )
+    except Exception as e:
+        logger.exception(f"Image redaction failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to redact image")
