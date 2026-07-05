@@ -24,7 +24,7 @@ class PIISpan(BaseModel):
     reason: Optional[str] = None  # Explanation from Gemini AI
 
 class DocumentAnalysisResult(BaseModel):
-    document_id: Optional[int] = None
+    document_id: Optional[str] = None
     text: str
     spans: List[PIISpan]
     classification: Optional[str] = "GENERAL"

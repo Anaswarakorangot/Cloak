@@ -8,10 +8,11 @@ import * as Popover from '@radix-ui/react-popover';
 import { Info, ShieldAlert, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Document as PdfDocument, Page as PdfPage, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `${pdfjsWorker}?v=${pdfjs.version}`;
 
 
 interface DocumentViewerProps {
@@ -40,6 +41,31 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const [focusedSpanIndex, setFocusedSpanIndex] = useState<number>(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (fileName.toLowerCase().endsWith('.pdf') && document?.document_id) {
+      const fetchPdf = async () => {
+        try {
+          const res = await fetch(`http://localhost:8000/api/documents/${document.document_id}/pdf`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('cloak_token')}` }
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            setPdfUrl(URL.createObjectURL(blob));
+          } else {
+            console.error("Failed to fetch original PDF");
+          }
+        } catch (e) {
+          console.error("Error fetching PDF", e);
+        }
+      };
+      fetchPdf();
+    }
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [document?.document_id, fileName]);
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const tooltipEl = document.getElementById('redaction-tooltip');
@@ -167,6 +193,26 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
       }
     }
   };
+
+  const textRenderer = React.useCallback(
+    (textItem: any) => {
+      let str = textItem.str;
+      if (!document?.spans) return str;
+      
+      const activeSpans = document.spans.filter(s => s.suggested_redaction);
+      const markStyle = "background-color: black; color: transparent; border-radius: 2px; padding: 0.25em 0; margin: -0.25em 0; display: inline-block; line-height: 1; box-shadow: 0 0 2px black;";
+      for (const span of activeSpans) {
+        if (span.text.length < 2) continue;
+        if (str.includes(span.text)) {
+           str = str.split(span.text).join(`<mark style="${markStyle}">${span.text}</mark>`);
+        } else if (span.text.includes(str.trim()) && str.trim().length > 3) {
+           str = `<mark style="${markStyle}">${str}</mark>`;
+        }
+      }
+      return str;
+    },
+    [document?.spans]
+  );
 
   const handleAddRedaction = (type: PIIType) => {
     if (tooltip) {
@@ -298,6 +344,71 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     return elements;
   };
 
+  const renderPdfViewer = (isFinalPreview: boolean) => (
+    <div className="w-full flex flex-col h-full">
+      <div className="bg-slate-900 px-6 py-3 border-b border-slate-800 text-xs text-slate-400 font-bold tracking-wider uppercase flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isFinalPreview ? (
+            <><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Redacted PDF Preview</>
+          ) : (
+            <><span className="w-2 h-2 rounded-full bg-amber-500"></span> Live Interactive PDF Redaction</>
+          )}
+        </div>
+        <div className="text-slate-500 italic lowercase normal-case">
+          {isFinalPreview ? "This is how the final exported document will look" : "Highlight text directly on the document below to manually redact"}
+        </div>
+      </div>
+      <div 
+        ref={pdfRef}
+        className="w-full flex-1 overflow-auto bg-slate-800/20 relative flex flex-col items-center"
+        onMouseUp={isFinalPreview ? undefined : handleSelection}
+      >
+        {pdfUrl ? (
+          <PdfDocument
+            file={pdfUrl}
+            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+            className="flex flex-col items-center p-8 selection:bg-indigo-500/30"
+            error={<div className="text-red-400 p-8">Failed to load PDF file. The PDF may be corrupted or missing.</div>}
+            loading={<div className="text-slate-400 p-8">Loading PDF visual...</div>}
+          >
+          <PdfPage 
+            pageNumber={pageNumber} 
+            renderTextLayer={true} 
+            renderAnnotationLayer={true}
+            customTextRenderer={textRenderer}
+            className="shadow-2xl border border-white/10"
+            width={800}
+          />
+        </PdfDocument>
+        ) : (
+          <div className="text-slate-400 p-8 mt-10">Fetching secure document...</div>
+        )}
+        
+        {numPages && numPages > 1 && (
+          <div className="sticky bottom-6 mx-auto w-fit flex items-center gap-4 bg-slate-900/95 border border-slate-700/50 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl z-10">
+            <button 
+              onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+              disabled={pageNumber <= 1}
+              className="p-1 text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="text-sm font-semibold text-slate-200 w-24 text-center">
+              Page {pageNumber} of {numPages}
+            </span>
+            <button 
+              onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
+              disabled={pageNumber >= numPages}
+              className="p-1 text-slate-400 hover:text-white disabled:opacity-50 transition-colors"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
       
@@ -341,86 +452,43 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         )}
         
         {reviewMode ? (
-          <div className="flex w-full h-[70vh] overflow-hidden">
-            <div 
-              ref={textRef}
-              className={`p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto ${fileName.toLowerCase().endsWith('.pdf') && document.document_id ? 'flex-1 border-r border-slate-700/50' : 'w-full max-h-[70vh]'}`}
-              onMouseUp={handleSelection}
-            >
-              {fileName.toLowerCase().endsWith('.pdf') && document.document_id && (
-                <div className="text-xs text-indigo-400 font-bold mb-4 uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Extracted Text For Review
-                </div>
-              )}
-              {renderText()}
-            </div>
-            {fileName.toLowerCase().endsWith('.pdf') && document.document_id && (
-              <div className="flex-1 bg-[#1e1e1e] flex flex-col">
-                <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 text-xs text-slate-400 font-bold tracking-wider uppercase flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> Original PDF Context
-                </div>
-                <div 
-                  ref={pdfRef}
-                  className="w-full flex-1 overflow-auto bg-slate-800/20 relative"
-                  onMouseUp={handleSelection}
-                >
-                  <PdfDocument
-                    file={`http://localhost:8000/api/documents/${document.document_id}/pdf`}
-                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                    className="flex flex-col items-center p-4 selection:bg-indigo-500/30"
-                  >
-                    <PdfPage 
-                      pageNumber={pageNumber} 
-                      renderTextLayer={true} 
-                      renderAnnotationLayer={true}
-                      className="shadow-2xl border border-white/10"
-                      width={500}
-                    />
-                  </PdfDocument>
-                  
-                  {numPages && numPages > 1 && (
-                    <div className="sticky bottom-4 mx-auto w-fit flex items-center gap-4 bg-slate-900/90 border border-slate-700/50 backdrop-blur-md px-4 py-2 rounded-full shadow-lg mt-4 z-10">
-                      <button 
-                        onClick={() => setPageNumber(p => Math.max(1, p - 1))}
-                        disabled={pageNumber <= 1}
-                        className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <span className="text-xs font-semibold text-slate-300">
-                        Page {pageNumber} of {numPages}
-                      </span>
-                      <button 
-                        onClick={() => setPageNumber(p => Math.min(numPages, p + 1))}
-                        disabled={pageNumber >= numPages}
-                        className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+          <div className="flex w-full h-[70vh] overflow-hidden bg-[#1e1e1e]">
+            {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
+              <div 
+                ref={textRef}
+                className="w-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
+                onMouseUp={handleSelection}
+              >
+                {renderText()}
               </div>
+            ) : (
+              renderPdfViewer(false)
             )}
           </div>
         ) : (
           <div className="flex w-full overflow-hidden h-[70vh]">
-            <div className="flex-1 p-8 border-r border-slate-700/50 overflow-y-auto bg-slate-950/40">
-              <h3 className="text-slate-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-950/90 py-2 backdrop-blur-sm z-10">
-                <span className="w-2 h-2 rounded-full bg-slate-500"></span> Original Text
-              </h3>
-              <div className="text-slate-500 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans opacity-70">
-                {document.text}
-              </div>
-            </div>
-            <div className="flex-1 p-8 overflow-y-auto bg-slate-900/40 shadow-inner">
-              <h3 className="text-emerald-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-900/90 py-2 backdrop-blur-sm z-10">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Redacted Safe Export
-              </h3>
-              <div className="text-slate-200 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans">
-                {renderText()}
-              </div>
-            </div>
+            {fileName.toLowerCase().endsWith('.pdf') && document.document_id ? (
+              <div className="w-full bg-[#1e1e1e] flex flex-col">{renderPdfViewer(true)}</div>
+            ) : (
+              <>
+                <div className="flex-1 p-8 border-r border-slate-700/50 overflow-y-auto bg-slate-950/40">
+                  <h3 className="text-slate-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-950/90 py-2 backdrop-blur-sm z-10">
+                    <span className="w-2 h-2 rounded-full bg-slate-500"></span> Original Text
+                  </h3>
+                  <div className="text-slate-500 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans opacity-70">
+                    {document.text}
+                  </div>
+                </div>
+                <div className="flex-1 p-8 overflow-y-auto bg-slate-900/40 shadow-inner">
+                  <h3 className="text-emerald-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-900/90 py-2 backdrop-blur-sm z-10">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Redacted Safe Export
+                  </h3>
+                  <div className="text-slate-200 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans">
+                    {renderText()}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

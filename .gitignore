@@ -11,3 +11,4 @@ conseal.db
 lumora/
 .DS_Store
 *.log
+backend/uploads/

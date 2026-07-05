@@ -30,15 +30,6 @@ export function useDocumentState() {
   };
 
   const setDocument = (doc: DocumentAnalysisResult, mode: 'gemini' | 'mock', name: string) => {
-    // Apply Tiered Auto-Action: auto-revert very low confidence false positives
-    if (doc && doc.spans) {
-      const originalCount = doc.spans.length;
-      doc.spans = doc.spans.filter(s => s.suggested_redaction || s.confidence >= 0.2);
-      if (doc.spans.length < originalCount) {
-        addLog('AUTO_ACTION', `Auto-reverted ${originalCount - doc.spans.length} obvious false positives (confidence < 20%)`, doc.spans);
-      }
-    }
-    
     setDocumentState(doc);
     setDetectionMode(mode);
     setFileName(name);

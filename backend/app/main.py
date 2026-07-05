@@ -375,7 +375,7 @@ def export_pdf_document(data: DocumentAnalysisResult, current_user: User = Depen
         raise HTTPException(status_code=500, detail="Failed to redact PDF")
 
 @app.get("/api/documents/{doc_id}/pdf")
-def get_original_pdf(doc_id: int, db: Session = Depends(get_db)):
+def get_original_pdf(doc_id: str, db: Session = Depends(get_db)):
     """
     Serve the original uploaded PDF.
     """
