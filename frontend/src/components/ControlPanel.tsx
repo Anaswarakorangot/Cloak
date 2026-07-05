@@ -62,40 +62,56 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
     }
 
     if (exportFormat === 'pdf') {
-      const doc = new jsPDF();
-      let pdfText = document?.text || '';
+      setIsExporting(true);
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'pt',
+        format: 'letter'
+      });
       
+      let htmlText = document?.text || '';
       const sortedSpans = [...(document?.spans || [])]
         .filter(s => s.suggested_redaction)
         .sort((a, b) => b.start - a.start);
       
       for (const span of sortedSpans) {
-        // Redacted directly shown as blackout blocks
-        const blackout = '█'.repeat(span.text.length); 
-        pdfText = pdfText.slice(0, span.start) + blackout + pdfText.slice(span.end);
+        htmlText = htmlText.slice(0, span.start) + 
+          `<span style="background-color: black; color: black; border-radius: 2px;">${'X'.repeat(span.text.length)}</span>` + 
+          htmlText.slice(span.end);
       }
 
-      doc.setFont('helvetica');
-      doc.setFontSize(11);
+      const element = window.document.createElement('div');
+      element.style.width = '600px';
+      element.style.padding = '40px';
+      element.style.fontFamily = 'Helvetica, Arial, sans-serif';
+      element.style.fontSize = '14px';
+      element.style.whiteSpace = 'pre-wrap';
+      element.style.lineHeight = '1.6';
+      element.style.color = '#000000';
+      element.style.backgroundColor = '#ffffff';
+      element.innerHTML = htmlText;
       
-      // Split text to handle word wrapping
-      const splitText = doc.splitTextToSize(pdfText, 180);
+      // Temporarily add to DOM so html2canvas can read it
+      element.style.position = 'absolute';
+      element.style.left = '-9999px';
+      element.style.top = '0';
+      window.document.body.appendChild(element);
+
+      doc.html(element, {
+        callback: function (doc) {
+          doc.save(`${exportName || 'document'}.pdf`);
+          window.document.body.removeChild(element);
+          setIsExporting(false);
+          setExported(true);
+          setShowSummary(true);
+          setTimeout(() => setExported(false), 3000);
+        },
+        x: 0,
+        y: 0,
+        width: 600,
+        windowWidth: 600
+      });
       
-      // Support pagination if text is too long
-      let y = 20;
-      for (let i = 0; i < splitText.length; i++) {
-        if (y > 280) {
-          y = 20;
-          doc.addPage();
-        }
-        doc.text(splitText[i], 15, y);
-        y += 6;
-      }
-      
-      doc.save(`${exportName || 'document'}.pdf`);
-      setExported(true);
-      setShowSummary(true);
-      setTimeout(() => setExported(false), 3000);
       return;
     }
 
