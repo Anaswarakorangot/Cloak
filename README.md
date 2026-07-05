@@ -79,7 +79,8 @@ Click **"Quick Demo"** on the dashboard to test the pre-loaded edge cases and ma
 ---
 
 ## 📖 Further Reading
-For a detailed breakdown of the database schema and data flow, see our [Project Documentation](PROJECT_DOCUMENTATION.md).
+*   [Feature Documentation](FEATURES.md) - A comprehensive breakdown of all features and how they work.
+*   [Project Documentation](PROJECT_DOCUMENTATION.md) - Database schema and data flow.
 
 ---
 
