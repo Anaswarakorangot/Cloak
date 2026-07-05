@@ -38,9 +38,11 @@ function MainApp() {
     if (isApp) {
       document.body.style.background = '#0a0a0a';
       document.body.style.color = '#ffffff';
+      document.documentElement.style.fontSize = '16px';
     } else {
       document.body.style.background = '#ffffff';
       document.body.style.color = '#111111';
+      document.documentElement.style.fontSize = isLanding ? '' : '16px';
     }
   }, [location.pathname, isAuthenticated]);
 

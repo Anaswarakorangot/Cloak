@@ -99,22 +99,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-6 lg:p-12">
-      
-      {/* Header */}
-      <div className="text-center mb-10">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
-            <span className="text-white font-black text-xl">C</span>
-          </div>
-          <h1 className="text-4xl font-black text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-            Cloak
-          </h1>
-        </div>
-        <p className="text-slate-400 text-lg max-w-md">
-          Upload your document and let AI detect and redact sensitive PII before you share it.
-        </p>
-      </div>
+    <div className="w-full h-full flex flex-col items-center justify-center p-6 lg:p-8">
 
       <div className="w-full max-w-2xl space-y-6">
         

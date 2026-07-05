@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { UploadPage } from './UploadPage';
 import { useAuth } from '../contexts/AuthContext';
-import { ShieldCheck, FileText, Settings, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, FileText, Settings, LogOut, CheckCircle2, ShieldAlert, Sparkles, Clock, ChevronRight } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -35,7 +35,6 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
     .catch(console.error);
   }, [token]);
 
-  
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -55,92 +54,124 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.15),rgba(255,255,255,0))] text-slate-200">
-      <header className="bg-[#0A0A0A]/60 backdrop-blur-xl border-b border-white/5 p-4 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#030303] text-slate-200 font-sans selection:bg-indigo-500/30 relative overflow-hidden">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-20 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/20 via-purple-500/5 to-transparent blur-3xl rounded-full mix-blend-screen transform scale-x-150"></div>
+      </div>
+
+      <header className="bg-[#030303]/80 backdrop-blur-2xl border-b border-white/[0.08] sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <ShieldCheck size={18} className="text-white" />
+            <div className="w-8 h-8 flex items-center justify-center text-[#cf8047]">
+              <svg viewBox="0 0 48 48" style={{ width: '2rem', height: '2rem', fill: 'currentColor' }}>
+                <path d="M24 2c2.2 13.8 7.9 19.6 22 22-14.1 2.4-19.8 8.2-22 22-2.2-13.8-7.9-19.6-22-22 14.1-2.4 19.8-8.2 22-22Z" />
+              </svg>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400">Cloak</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-white">Cloak</h1>
+            <div className="h-4 w-px bg-white/10 mx-2"></div>
+            <span className="text-sm font-medium text-slate-400">Workspace</span>
           </div>
-          <div className="flex gap-4">
-            <Link to="/rules" className="flex items-center gap-2 text-sm text-slate-400 hover:text-indigo-400 transition-colors">
-              <Settings size={16} /> Rules Engine
+          <div className="flex items-center gap-6">
+            <Link to="/rules" className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">
+              <Settings size={15} /> Rules Engine
             </Link>
-            <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-slate-400 hover:text-rose-400 transition-colors">
-              <LogOut size={16} /> Sign Out
+            <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-rose-400 transition-colors">
+              <LogOut size={15} /> Sign Out
             </button>
           </div>
         </div>
       </header>
 
-      <motion.main variants={containerVariants} initial="hidden" animate="show" className="max-w-6xl mx-auto p-6 md:p-12 space-y-12">
+      <motion.main variants={containerVariants} initial="hidden" animate="show" className="max-w-6xl mx-auto px-6 py-12 md:py-16 space-y-12 relative z-10">
+        
         <div className="text-center md:text-left">
-          <h2 className="text-4xl font-extrabold tracking-tight mb-2 text-white">Welcome to your Workspace</h2>
-          <p className="text-slate-400 text-lg">Manage your documents, review redactions, and configure detection rules.</p>
+          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-4">
+            <Sparkles size={12} /> Cloak Engine Active
+          </motion.div>
+          <motion.h2 variants={itemVariants} className="text-4xl md:text-5xl font-semibold tracking-tight mb-3 text-white">
+            Welcome back.
+          </motion.h2>
+          <motion.p variants={itemVariants} className="text-slate-400 text-lg max-w-xl">
+            Protect your sensitive data instantly. Upload documents to automatically detect and redact PII.
+          </motion.p>
         </div>
 
         {stats && (
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white/[0.02] border border-white/5 p-6 rounded-2xl shadow-xl backdrop-blur-sm flex flex-col justify-between hover:bg-white/[0.04] transition-colors">
-              <h3 className="text-slate-400 text-sm font-semibold mb-3 tracking-wide uppercase">Docs Processed</h3>
-              <p className="text-4xl font-black text-white">{stats.documents_processed}</p>
+          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="bg-white/[0.02] border border-white/[0.08] p-6 rounded-2xl flex flex-col justify-between hover:bg-white/[0.04] transition-colors relative overflow-hidden group">
+              <h3 className="text-slate-400 text-xs font-semibold mb-4 tracking-wide uppercase">Docs Processed</h3>
+              <p className="text-4xl font-medium text-white">{stats.documents_processed}</p>
             </div>
-            <div className="bg-gradient-to-b from-amber-500/10 to-amber-500/5 border border-amber-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-sm flex flex-col justify-between hover:from-amber-500/15 transition-colors">
-              <h3 className="text-amber-400 text-sm font-semibold mb-3 tracking-wide uppercase flex items-center gap-2"><ShieldAlert size={16}/> Pending Review</h3>
-              <p className="text-4xl font-black text-amber-300">{stats.pending_review}</p>
+            <div className="bg-white/[0.02] border border-white/[0.08] p-6 rounded-2xl flex flex-col justify-between hover:bg-amber-500/5 hover:border-amber-500/20 transition-colors relative overflow-hidden group">
+              <h3 className="text-slate-400 text-xs font-semibold mb-4 tracking-wide uppercase flex items-center gap-1.5"><ShieldAlert size={14} className="text-amber-400"/> Pending Review</h3>
+              <p className="text-4xl font-medium text-amber-400">{stats.pending_review}</p>
             </div>
-            <div className="bg-gradient-to-b from-indigo-500/10 to-indigo-500/5 border border-indigo-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-sm flex flex-col justify-between hover:from-indigo-500/15 transition-colors">
-              <h3 className="text-indigo-400 text-sm font-semibold mb-3 tracking-wide uppercase">Total Redactions</h3>
-              <p className="text-4xl font-black text-indigo-300">{stats.total_redactions}</p>
+            <div className="bg-white/[0.02] border border-white/[0.08] p-6 rounded-2xl flex flex-col justify-between hover:bg-white/[0.04] transition-colors relative overflow-hidden group">
+              <h3 className="text-slate-400 text-xs font-semibold mb-4 tracking-wide uppercase">Total Redactions</h3>
+              <p className="text-4xl font-medium text-white">{stats.total_redactions}</p>
             </div>
-            <div className="bg-gradient-to-b from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 p-6 rounded-2xl shadow-xl backdrop-blur-sm flex flex-col justify-between hover:from-emerald-500/15 transition-colors">
-              <h3 className="text-emerald-400 text-sm font-semibold mb-3 tracking-wide uppercase flex items-center gap-2"><CheckCircle2 size={16}/> Active Rules</h3>
-              <p className="text-4xl font-black text-emerald-300">{stats.active_rules}</p>
+            <div className="bg-white/[0.02] border border-white/[0.08] p-6 rounded-2xl flex flex-col justify-between hover:bg-emerald-500/5 hover:border-emerald-500/20 transition-colors relative overflow-hidden group">
+              <h3 className="text-slate-400 text-xs font-semibold mb-4 tracking-wide uppercase flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-400"/> Active Rules</h3>
+              <p className="text-4xl font-medium text-white">{stats.active_rules}</p>
             </div>
           </motion.div>
         )}
 
-        <motion.div variants={itemVariants} className="bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
-          <div className="p-8 border-b border-white/10 bg-white/[0.01]">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <FileText className="text-indigo-400" />
-              Upload New Document
-            </h3>
+        <motion.div variants={itemVariants} className="bg-[#0a0a0a] border border-white/[0.08] rounded-3xl overflow-hidden shadow-2xl relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
+          <div className="p-8 border-b border-white/[0.06] flex items-center gap-3 relative z-10">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+              <FileText size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-white">Process Document</h3>
+              <p className="text-sm text-slate-400">Upload a file or paste text to begin PII redaction</p>
+            </div>
           </div>
-          <UploadPage onAnalysisComplete={onAnalysisComplete} />
+          <div className="relative z-10">
+            <UploadPage onAnalysisComplete={onAnalysisComplete} />
+          </div>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
-          <div className="p-8 border-b border-white/10 bg-white/[0.01]">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <ShieldCheck className="text-emerald-400" />
-              Recent Documents
-            </h3>
+        <motion.div variants={itemVariants} className="bg-[#0a0a0a] border border-white/[0.08] rounded-3xl overflow-hidden relative shadow-2xl">
+          <div className="p-8 border-b border-white/[0.06] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.05] flex items-center justify-center border border-white/[0.05] text-slate-300">
+                <Clock size={20} />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Recent Activity</h3>
+                <p className="text-sm text-slate-400">Your previously processed documents</p>
+              </div>
+            </div>
           </div>
           <div className="p-0 overflow-x-auto">
             {history.length > 0 ? (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-400 bg-white/[0.01]">
-                    <th className="px-6 py-4 font-semibold whitespace-nowrap">Filename</th>
-                    <th className="px-6 py-4 font-semibold whitespace-nowrap">Status</th>
-                    <th className="px-6 py-4 font-semibold text-right whitespace-nowrap">Redactions</th>
-                    <th className="px-6 py-4 font-semibold text-right whitespace-nowrap">Date</th>
+                  <tr className="border-b border-white/[0.06] text-xs uppercase tracking-wider text-slate-500 bg-white/[0.01]">
+                    <th className="px-8 py-5 font-semibold whitespace-nowrap">Filename</th>
+                    <th className="px-8 py-5 font-semibold whitespace-nowrap">Status</th>
+                    <th className="px-8 py-5 font-semibold text-right whitespace-nowrap">Redactions</th>
+                    <th className="px-8 py-5 font-semibold text-right whitespace-nowrap">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-white/[0.06]">
                   {history.map((doc, idx) => (
-                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-200">{doc.file_name}</td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-xs font-bold uppercase tracking-wide">
+                    <tr key={idx} className="hover:bg-white/[0.02] transition-colors cursor-pointer group">
+                      <td className="px-8 py-5 text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{doc.file_name}</td>
+                      <td className="px-8 py-5 text-sm">
+                        <span className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide border ${
+                          doc.status === 'clean' 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
                           {doc.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-right font-medium text-slate-300">{doc.redaction_count}</td>
-                      <td className="px-6 py-4 text-sm text-right text-slate-500 whitespace-nowrap">
+                      <td className="px-8 py-5 text-sm text-right font-medium text-slate-300">{doc.redaction_count}</td>
+                      <td className="px-8 py-5 text-sm text-right text-slate-500 whitespace-nowrap">
                         {new Date(doc.created_at).toLocaleDateString()} {new Date(doc.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </td>
                     </tr>
@@ -148,10 +179,11 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
                 </tbody>
               </table>
             ) : (
-              <div className="p-8 text-center text-slate-500 text-sm">No recent documents found.</div>
+              <div className="p-12 text-center text-slate-500 text-sm">No recent documents found.</div>
             )}
           </div>
         </motion.div>
+
       </motion.main>
     </div>
   );
