@@ -241,6 +241,7 @@ async def analyze_upload(
     
     file_path = ""
     if ext == ".pdf":
+        os.makedirs("uploads", exist_ok=True)
         file_path = f"uploads/{batch.id}_{filename}"
         with open(file_path, "wb") as f:
             f.write(raw_bytes)
