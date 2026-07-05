@@ -79,7 +79,8 @@ Click **"Quick Demo"** on the dashboard to test the pre-loaded edge cases and ma
 ---
 
 ## 📖 Further Reading
-For a detailed breakdown of the database schema and data flow, see our [Project Documentation](PROJECT_DOCUMENTATION.md).
+*   [Project Documentation](PROJECT_DOCUMENTATION.md) - Database schema and data flow.
+*   [Strategic Build Plan](BUILD_PLAN.md) - Our "What we built and why" narrative solving for Trust & Correction.
 
 ---
 
