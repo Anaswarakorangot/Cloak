@@ -163,6 +163,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             <Popover.Root open={open} onOpenChange={setOpen}>
               <Popover.Trigger asChild>
                 <span
+                  id={`span-${span.id}`}
                   className="transition-all duration-300 bg-amber-500/10 border-b border-amber-500/50 text-amber-200 px-0.5 mx-0.5 rounded-sm shadow-[0_0_10px_rgba(245,158,11,0.1)] cursor-pointer hover:bg-amber-500/20"
                 >
                   {span.text}
@@ -321,7 +322,19 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             ) : (
               <div className="space-y-3 border-b border-slate-800/60 pb-6 mb-4">
                 {pendingSpans.map(span => (
-                  <div key={span.id} className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-colors">
+                  <div 
+                    key={span.id} 
+                    className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-all cursor-pointer group hover:bg-slate-800/80"
+                    onClick={() => {
+                      const el = document.getElementById(`span-${span.id}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Brief highlight animation
+                        el.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2', 'ring-offset-slate-900');
+                        setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2', 'ring-offset-slate-900'), 1500);
+                      }
+                    }}
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">
                         {span.type} • {Math.round(span.confidence * 100)}%
@@ -332,13 +345,13 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => confirmRedaction(span.id)}
+                        onClick={(e) => { e.stopPropagation(); confirmRedaction(span.id); }}
                         className="flex-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded border border-rose-500/30 transition-colors"
                       >
                         Redact
                       </button>
                       <button
-                        onClick={() => removeRedaction(span.id)}
+                        onClick={(e) => { e.stopPropagation(); removeRedaction(span.id); }}
                         className="flex-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded border border-emerald-500/30 transition-colors"
                       >
                         Ignore
