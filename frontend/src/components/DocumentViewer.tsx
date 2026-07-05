@@ -84,7 +84,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   if (loading) {
     return (
       <div className="p-12 flex flex-col items-center justify-center space-y-4 h-full bg-slate-900/20 rounded-lg">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-indigo-500/20"></div>
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-orange-500/20"></div>
         <div className="text-slate-400 font-medium">Analyzing document for PII...</div>
       </div>
     );
@@ -345,7 +345,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   };
 
   const renderPdfViewer = (isFinalPreview: boolean) => (
-    <div className="w-full flex flex-col h-full">
+    <div className="w-full flex flex-col h-full min-h-0 overflow-hidden">
       <div className="bg-slate-900 px-6 py-3 border-b border-slate-800 text-xs text-slate-400 font-bold tracking-wider uppercase flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isFinalPreview ? (
@@ -360,14 +360,14 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
       </div>
       <div 
         ref={pdfRef}
-        className="w-full flex-1 overflow-auto bg-slate-800/20 relative flex flex-col items-center"
+        className="w-full flex-1 overflow-auto bg-slate-800/20 relative flex flex-col items-center min-h-0"
         onMouseUp={isFinalPreview ? undefined : handleSelection}
       >
         {pdfUrl ? (
           <PdfDocument
             file={pdfUrl}
             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            className="flex flex-col items-center p-8 selection:bg-indigo-500/30"
+            className="flex flex-col items-center p-8 selection:bg-orange-500/30"
             error={<div className="text-red-400 p-8">Failed to load PDF file. The PDF may be corrupted or missing.</div>}
             loading={<div className="text-slate-400 p-8">Loading PDF visual...</div>}
           >
@@ -443,10 +443,10 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         )}
         
         {documentState.detectionMode === 'gemini' && reviewMode && (
-          <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
-            <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
-            <p className="text-sm text-indigo-200/80 leading-relaxed font-sans">
-              <strong className="text-indigo-300">Privacy Verification:</strong> All structured data (like SSNs and phone numbers) was detected locally and masked with asterisks before this document was sent to Gemini. The AI only evaluated contextual relationships to find hidden PII, ensuring your most sensitive data never left this device.
+          <div className="bg-orange-500/10 border-b border-orange-500/20 px-6 py-3 flex items-start gap-3">
+            <Info className="text-orange-400 shrink-0 mt-0.5" size={16} />
+            <p className="text-sm text-orange-200/80 leading-relaxed font-sans">
+              <strong className="text-orange-300">Privacy Verification:</strong> All structured data (like SSNs and phone numbers) was detected locally and masked with asterisks before this document was sent to Gemini. The AI only evaluated contextual relationships to find hidden PII, ensuring your most sensitive data never left this device.
             </p>
           </div>
         )}
@@ -456,7 +456,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
               <div 
                 ref={textRef}
-                className="w-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
+                className="w-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto max-h-[70vh]"
                 onMouseUp={handleSelection}
               >
                 {renderText()}
@@ -522,7 +522,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                     id={`queue-item-${span.id}`}
                     key={span.id} 
                     className={`p-3 rounded-lg hover:border-amber-500/40 transition-all cursor-pointer group hover:bg-slate-800/80 ${
-                      index === focusedSpanIndex ? 'bg-slate-800 border border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800/50 border border-amber-500/20'
+                      index === focusedSpanIndex ? 'bg-slate-800 border border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'bg-slate-800/50 border border-amber-500/20'
                     }`}
                     onClick={() => {
                       setFocusedSpanIndex(index);
@@ -569,7 +569,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 {sessionLog.length > 0 && (
                   <button 
                     onClick={undoLastAction}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+                    className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1 font-semibold"
                   >
                     ⤺ Undo Last
                   </button>
@@ -613,7 +613,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           className="fixed z-50 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2 ring-1 ring-white/5"
           style={{ top: tooltip.y - 45, left: tooltip.x }}
         >
-          <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-indigo-300 uppercase tracking-wider">Redact as:</span>
+          <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-orange-300 uppercase tracking-wider">Redact as:</span>
           {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
             <button 
               key={type}
@@ -621,7 +621,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 e.stopPropagation();
                 handleAddRedaction(type);
               }}
-              className="text-xs font-medium hover:bg-indigo-500/20 hover:text-indigo-200 px-2 py-1.5 rounded transition-all duration-200"
+              className="text-xs font-medium hover:bg-orange-500/20 hover:text-orange-200 px-2 py-1.5 rounded transition-all duration-200"
             >
               {type}
             </button>
