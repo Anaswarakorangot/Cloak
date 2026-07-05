@@ -85,6 +85,6 @@ For a detailed breakdown of the database schema and data flow, see our [Project 
 
 <div align="center">
   <b>Built for the Sprintfour Hackathon</b><br>
-  By Anaswara Korangot<br>
+  By Anaswara K<br>
   <code>CB.SC.U4CSE23405</code>
 </div>
