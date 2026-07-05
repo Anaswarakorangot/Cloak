@@ -30,6 +30,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName, sessionLog = [], undoLastAction } = documentState;
   const textRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
+  const [focusedSpanIndex, setFocusedSpanIndex] = useState<number>(0);
 
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
@@ -58,6 +59,54 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   if (!document) {
     return <div className="p-8 text-center text-red-500">Failed to load document.</div>;
   }
+
+  const pendingSpans = document.spans
+    .filter(s => !s.suggested_redaction)
+    .sort((a, b) => {
+       const getSeverity = (t: string) => ['SSN', 'PHONE', 'EMAIL'].includes(t) ? 3 : 1;
+       const riskA = (1 - a.confidence) * getSeverity(a.type);
+       const riskB = (1 - b.confidence) * getSeverity(b.type);
+       return riskB - riskA;
+    });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!reviewMode || pendingSpans.length === 0) return;
+      if (window.document.activeElement?.tagName === 'INPUT' || window.document.activeElement?.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedSpanIndex(prev => Math.min(prev + 1, pendingSpans.length - 1));
+        const el = window.document.getElementById(`queue-item-${pendingSpans[Math.min(focusedSpanIndex + 1, pendingSpans.length - 1)]?.id}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedSpanIndex(prev => Math.max(prev - 1, 0));
+        const el = window.document.getElementById(`queue-item-${pendingSpans[Math.max(focusedSpanIndex - 1, 0)]?.id}`);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const spanId = pendingSpans[focusedSpanIndex]?.id;
+        if (spanId) {
+          confirmRedaction(spanId);
+          setFocusedSpanIndex(prev => Math.min(prev, Math.max(0, pendingSpans.length - 2)));
+        }
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        const spanId = pendingSpans[focusedSpanIndex]?.id;
+        if (spanId) {
+          removeRedaction(spanId);
+          setFocusedSpanIndex(prev => Math.min(prev, Math.max(0, pendingSpans.length - 2)));
+        }
+      } else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (undoLastAction) undoLastAction();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reviewMode, pendingSpans, focusedSpanIndex, confirmRedaction, removeRedaction, undoLastAction]);
 
   const handleSelection = () => {
     if (!reviewMode) return;
@@ -283,7 +332,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           </div>
         )}
         
-        {documentState.detectionMode === 'gemini' && (
+        {documentState.detectionMode === 'gemini' && reviewMode && (
           <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-6 py-3 flex items-start gap-3">
             <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
             <p className="text-sm text-indigo-200/80 leading-relaxed font-sans">
@@ -292,14 +341,34 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           </div>
         )}
         
-        
-        <div 
-          ref={textRef}
-          className="p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
-          onMouseUp={handleSelection}
-        >
-          {renderText()}
-        </div>
+        {reviewMode ? (
+          <div 
+            ref={textRef}
+            className="p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
+            onMouseUp={handleSelection}
+          >
+            {renderText()}
+          </div>
+        ) : (
+          <div className="flex w-full overflow-hidden h-[70vh]">
+            <div className="flex-1 p-8 border-r border-slate-700/50 overflow-y-auto bg-slate-950/40">
+              <h3 className="text-slate-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-950/90 py-2 backdrop-blur-sm z-10">
+                <span className="w-2 h-2 rounded-full bg-slate-500"></span> Original Text
+              </h3>
+              <div className="text-slate-500 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans opacity-70">
+                {document.text}
+              </div>
+            </div>
+            <div className="flex-1 p-8 overflow-y-auto bg-slate-900/40 shadow-inner">
+              <h3 className="text-emerald-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-900/90 py-2 backdrop-blur-sm z-10">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Redacted Safe Export
+              </h3>
+              <div className="text-slate-200 leading-[2.5] text-[15px] whitespace-pre-wrap font-sans">
+                {renderText()}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Risk-Ordered Review Queue Sidebar */}
@@ -311,6 +380,11 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
               Review Queue
             </h3>
             <p className="text-xs text-slate-400 mt-1">Sorted by risk (Uncertainty × Severity)</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-500 font-mono tracking-wider bg-slate-950/50 p-2 rounded border border-slate-800/50">
+               <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">↑↓ Nav</span>
+               <span className="bg-slate-800 px-1.5 py-0.5 rounded text-rose-300">Enter Redact</span>
+               <span className="bg-slate-800 px-1.5 py-0.5 rounded text-emerald-300">Del Ignore</span>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -321,12 +395,16 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
               </div>
             ) : (
               <div className="space-y-3 border-b border-slate-800/60 pb-6 mb-4">
-                {pendingSpans.map(span => (
+                {pendingSpans.map((span, index) => (
                   <div 
+                    id={`queue-item-${span.id}`}
                     key={span.id} 
-                    className="bg-slate-800/50 border border-amber-500/20 p-3 rounded-lg hover:border-amber-500/40 transition-all cursor-pointer group hover:bg-slate-800/80"
+                    className={`p-3 rounded-lg hover:border-amber-500/40 transition-all cursor-pointer group hover:bg-slate-800/80 ${
+                      index === focusedSpanIndex ? 'bg-slate-800 border border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800/50 border border-amber-500/20'
+                    }`}
                     onClick={() => {
-                      const el = document.getElementById(`span-${span.id}`);
+                      setFocusedSpanIndex(index);
+                      const el = window.document.getElementById(`span-${span.id}`);
                       if (el) {
                         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Brief highlight animation

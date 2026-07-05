@@ -21,6 +21,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [manualText, setManualText] = useState('');
   const [manualType, setManualType] = useState('NAME');
+  const [rememberTerm, setRememberTerm] = useState(false);
   const [exported, setExported] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -146,6 +147,50 @@ ${htmlText}
     setTimeout(() => setExported(false), 3000);
   };
 
+  const generateCertificate = () => {
+    if (!document) return;
+    
+    const redactedSpans = document.spans.filter(s => s.suggested_redaction);
+    const byType = redactedSpans.reduce((acc, s) => {
+      acc[s.type] = (acc[s.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const certContent = `
+==================================================
+        CLOAK REDACTION CERTIFICATE
+==================================================
+Date: ${new Date().toLocaleString()}
+Document ID: ${fileName || 'Unnamed Document'}
+Document Type: ${document.classification || 'GENERAL'}
+
+--- REDACTION SUMMARY ---
+Total Exposures Masked: ${redactedSpans.length}
+Unresolved Risks Ignored/Exported: ${lowConfidenceUnreviewed}
+
+--- ENTITIES REDACTED ---
+${Object.entries(byType).map(([type, count]) => `${type.padEnd(15)} : ${count}`).join('\n')}
+
+--- ENGINES UTILIZED ---
+- Local Presidio/Regex Engine (Offline Structured Data)
+- Gemini Contextual AI Hybrid Engine
+
+This certificate proves that the document was successfully processed 
+by the Cloak platform. All structured data was secured locally.
+==================================================
+`;
+    
+    const blob = new Blob([certContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = `${exportName || 'document'}_Redaction_Certificate.txt`;
+    window.document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    a.remove();
+  };
+
   return (
     <div className="flex items-center justify-between bg-slate-900/60 p-5 border-b border-slate-800/60 rounded-t-xl backdrop-blur-md">
       <div className="flex items-center space-x-4">
@@ -225,6 +270,11 @@ ${htmlText}
                     <option value="CUSTOM">CUSTOM (Custom Rule)</option>
                   </select>
                 </div>
+                
+                <label className="flex items-center gap-2 mt-4 text-sm text-slate-300">
+                  <input type="checkbox" checked={rememberTerm} onChange={e => setRememberTerm(e.target.checked)} className="rounded bg-slate-800 border-white/10" />
+                  Always redact this term in future documents
+                </label>
               </div>
               
               <div className="flex justify-end gap-3">
@@ -238,10 +288,31 @@ ${htmlText}
                 <button 
                   type="button"
                   disabled={!manualText.trim()}
-                  onClick={() => {
+                  onClick={async () => {
                     if (onAddRedaction && manualText.trim()) {
                       onAddRedaction(0, 0, manualText.trim(), manualType as any);
+                      
+                      if (rememberTerm) {
+                        try {
+                          await fetch('http://localhost:8000/api/rules', {
+                            method: 'POST',
+                            headers: { 
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              name: `Auto-Memory: ${manualText.trim()}`,
+                              pattern: manualText.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), // escape regex
+                              entity_type: manualType
+                            })
+                          });
+                        } catch (err) {
+                          console.error("Failed to save custom rule", err);
+                        }
+                      }
+                      
                       setManualText('');
+                      setRememberTerm(false);
                       setShowManualAdd(false);
                     }
                   }}
@@ -386,13 +457,22 @@ ${htmlText}
                 </div>
               </div>
               
-              <button 
-                type="button"
-                onClick={() => setShowSummary(false)}
-                className="w-full px-5 py-2.5 text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 shadow-md border border-white/10 rounded-lg transition-colors"
-              >
-                Close
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={generateCertificate}
+                  className="flex-1 px-3 py-2.5 text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 shadow-md border border-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <ShieldAlert size={14} /> Certificate
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowSummary(false)}
+                  className="flex-1 px-3 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>,
           window.document.body
