@@ -373,3 +373,17 @@ def export_pdf_document(data: DocumentAnalysisResult, current_user: User = Depen
     except Exception as e:
         logger.exception(f"PDF redaction failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to redact PDF")
+
+@app.get("/api/documents/{doc_id}/pdf")
+def get_original_pdf(doc_id: int, db: Session = Depends(get_db)):
+    """
+    Serve the original uploaded PDF.
+    """
+    from app.models.db_models import Document
+    from fastapi.responses import FileResponse
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    
+    if not doc or not doc.file_path or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Original PDF not found")
+        
+    return FileResponse(doc.file_path, media_type="application/pdf")

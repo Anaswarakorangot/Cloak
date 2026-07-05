@@ -342,12 +342,31 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         )}
         
         {reviewMode ? (
-          <div 
-            ref={textRef}
-            className="p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto max-h-[70vh]"
-            onMouseUp={handleSelection}
-          >
-            {renderText()}
+          <div className="flex w-full h-[70vh] overflow-hidden">
+            <div 
+              ref={textRef}
+              className={`p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-indigo-500/30 selection:text-indigo-200 overflow-y-auto ${fileName.toLowerCase().endsWith('.pdf') && document.document_id ? 'flex-1 border-r border-slate-700/50' : 'w-full max-h-[70vh]'}`}
+              onMouseUp={handleSelection}
+            >
+              {fileName.toLowerCase().endsWith('.pdf') && document.document_id && (
+                <div className="text-xs text-indigo-400 font-bold mb-4 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Extracted Text For Review
+                </div>
+              )}
+              {renderText()}
+            </div>
+            {fileName.toLowerCase().endsWith('.pdf') && document.document_id && (
+              <div className="flex-1 bg-[#1e1e1e] flex flex-col">
+                <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 text-xs text-slate-400 font-bold tracking-wider uppercase flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> Original PDF Context
+                </div>
+                <iframe 
+                  src={`http://localhost:8000/api/documents/${document.document_id}/pdf`} 
+                  className="w-full flex-1 border-0"
+                  title="Original PDF Document"
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex w-full overflow-hidden h-[70vh]">
