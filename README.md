@@ -29,19 +29,6 @@ Cloak counters this through **Asymmetric Friction UX**:
 
 ![Cloak System Architecture](./cloak_architecture.png)
 
-```mermaid
-graph TD
-    A[Raw Document / Scanned PDF / Image] --> B[Local Pre-Processing / Tesseract OCR]
-    B --> C[Local Hybrid NER Engine]
-    C --> D[Local PII Masking Engine]
-    D -->|Masked Content *******| E[Google Gemini Cloud API]
-    E --> F[Hierarchical Consensus Merger]
-    C --> F
-    F --> G[Knowledge Graph DB]
-    F --> H[Asymmetric Friction Review Interface]
-    H --> I[True-to-Life PDF / Doc / Text Export]
-```
-
 ### 1. Hybrid Zero-Trust Data Pipeline
 To enable deep semantic context analysis without compromising user data, Cloak implements a **local-first masking model**:
 * **Local NER (Presidio + spaCy + Custom Rules):** Named Entity Recognition and custom regex rules process documents locally on the device to locate structured PII.
