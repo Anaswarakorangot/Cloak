@@ -11,7 +11,6 @@ import { FinalExportModal } from './FinalExportModal';
 interface Props {
   document: DocumentAnalysisResult | null;
   reviewMode: boolean;
-  reviewMode: boolean;
   onToggleReviewMode: () => void;
   startTime: number;
   fileName?: string;
