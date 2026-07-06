@@ -57,13 +57,13 @@ function MainApp() {
     }
   }, []);
 
-  const handleAnalysisComplete = (
+  const handleAnalysisComplete = React.useCallback((
     result: DocumentAnalysisResult,
     mode: 'gemini' | 'mock',
     fileName: string
   ) => {
     state.setDocument(result, mode, fileName);
-  };
+  }, []);
 
   return (
     <Routes>
