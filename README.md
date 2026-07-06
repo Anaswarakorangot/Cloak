@@ -27,6 +27,8 @@ Cloak counters this through **Asymmetric Friction UX**:
 
 ## 🧠 Technical Architecture & Data Design
 
+![Cloak System Architecture](./cloak_architecture.png)
+
 ```mermaid
 graph TD
     A[Raw Document / Scanned PDF / Image] --> B[Local Pre-Processing / Tesseract OCR]
