@@ -124,9 +124,9 @@ def analyze_document_mock() -> DocumentAnalysisResult:
         ("John Doe",             "NAME",  0.98, True,  "High-confidence person name detected by NLP engine."),
         ("john.doe@example.com", "EMAIL", 0.99, True,  "Standard email regex match with full domain validation."),
         ("123-45-6789",          "SSN",   0.97, True,  "9-digit SSN format confirmed. All 3 detection layers agreed."),
-        ("492-11-001",           "SSN",   0.88, True,  "Regex matched SSN pattern. Context analyzer confirmed high risk."),
         ("Ananya Sharma",        "NAME",  0.95, True,  "High-confidence name confirmed by context engine."),
-        ("555-0198",             "PHONE", 0.92, True,  "Phone number format identified and validated."),
+        ("492-11-001",           "SSN",   0.88, True,  "Regex matched SSN pattern, but context suggests it may be a project code."),
+        ("555-0198",             "PHONE", 0.92, True,  "7-digit local phone number format identified. Ambiguous without area code."),
     ]
 
     spans = []
