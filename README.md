@@ -7,135 +7,66 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)
 
-## 🚀 Overview
+## 🚀 Architectural Design & Core Philosophy
 
-**Cloak** is a privacy-first, zero-trust web application designed to anonymize sensitive documents by automatically detecting, labeling, and redacting Personally Identifiable Information (PII). 
-
-In the modern era of AI and data sharing, documents cannot be safely uploaded to third-party tools without leaking private data. However, machine learning and regex engines are never 100% perfect. To solve this, Cloak introduces a **"correction-first" UX**. We acknowledge automation bias by flagging low-confidence detections and giving human reviewers an incredibly fast way to propagate manual corrections across an entire document. **Fix it once, fix it everywhere.**
+**Cloak** is a privacy-first, zero-trust document anonymization platform. Unlike typical redaction tools that rely on black-box cloud APIs, Cloak implements a hybrid privacy architecture designed to prevent data leakage at the source while resolving the core human challenges of manual data sanitization.
 
 ---
 
-## 🎯 The Problem
+## 🎯 Conceptual Foundations
 
-When organizations try to sanitize documents before sharing them, they face three major hurdles:
-1. **Missed Entities (False Negatives):** AI models often miss nuanced PII, leaving organizations vulnerable to data breaches.
-2. **Over-Redaction (False Positives):** Basic regex rules frequently censor safe data, making the resulting document useless for analysis.
-3. **Reviewer Fatigue:** Manually redacting a 50-page document takes hours, and human reviewers are prone to "automation bias" where they blindly trust the AI's suggestions.
+### 1. Combating Automation Bias via Asymmetric Friction
+Standard PII tools present all automated detections in a uniform list, creating a cognitive hazard known as **automation bias**—where human reviewers trust automated suggestions blindly and skim over missed leaks. 
 
-## 💡 The Cloak Solution
-
-Cloak solves these problems by combining a lightning-fast local NLP engine with a cloud-based semantic AI, wrapped in an interface that makes human review instantaneous and foolproof.
-
----
-
-## ✨ Core Features & Architecture
-
-### 🧠 1. Dual-Engine Hybrid Detection
-Cloak doesn't rely on just one method. It utilizes two distinct detection modes:
-*   **Local Engine (Presidio + Regex):** A fast, deterministic engine that processes data entirely offline. It uses Microsoft Presidio and spaCy for Named Entity Recognition (NER), catching 90% of standard PII instantly.
-*   **Cloud AI Engine (Gemini 2.5 Flash):** For complex, nuanced documents, the Gemini AI understands deep semantic context. *Crucially, Cloak masks all structured PII (like SSNs) locally before sending the document to the cloud*, ensuring zero-trust security.
-
-### 🕸️ 2. Dynamic Knowledge Graph
-Cloak builds a persistent, localized relationship graph as it processes documents. 
-If it sees that "John Doe" is linked to "john.doe@example.com" in *Document A*, it remembers that association in a local SQLite database. When *Document B* is uploaded containing just the email, Cloak automatically flags it and notes: *"Historically linked to John Doe in the Knowledge Graph"*.
-
-### 🤖 3. AI Explanations & Reasoning
-Black-box AI is dangerous in security contexts. When using the Gemini AI mode, every single detected PII span includes a plain-English explanation (e.g., *"Matches standard SSN format"* or *"Context implies this is a private medical identifier"*). This builds trust and massively speeds up human review.
-
-### ⚙️ 4. Dynamic Custom Rules Engine
-Every organization has unique PII (e.g., custom employee ID formats like `EMP-9921`). Cloak features a dynamic rules engine where users can define custom regex patterns that are instantly injected into the local detection pipeline alongside standard PII checks.
-
-### 📄 5. Seamless PDF & Image OCR Support
-Cloak doesn't just read plain text. Integrated with `pdfplumber` and `pytesseract`, it can extract, analyze, and redact text from uploaded PDFs, scanned documents, and images effortlessly.
-
-### 🎯 6. Auto-Propagating Manual Redactions
-If the AI misses a piece of PII (like a stray first name on page 12), the user simply clicks **Manual Redact**. Selecting the missed text instantly sweeps the entire document and intelligently redacts all matching instances, handling case-insensitivity and punctuation boundaries automatically. 
-
-### 🖨️ 7. True-to-Life PDF Export
-When exporting a document, users can choose `.TXT`, `.DOC`, or `.PDF`. The PDF engine converts all redacted labels into literal blackout blocks (`███████`) that perfectly match the character length of the hidden words—delivering a final product that looks identical to a professionally redacted government document.
+Cloak counters this through **Asymmetric Friction UX**:
+* **High-Exposure Alerts:** Critical items (e.g., SSNs, Passports) utilize dynamic visual pulses to maintain reviewer engagement.
+* **Stage-and-Confirm Dismissals:** While routine approvals take one click, dismissing a high-exposure risk requires a staged confirm pathway. This cognitive speed bump forces reviewers to consciously acknowledge the risk of exposing sensitive data.
+* **Risk-Framed Post-Mortems:** Upon export, reviewers are presented with a quantitative summary of remaining exposure metrics rather than generic "accuracy percentages," reinforcing a security-first posture.
 
 ---
 
-## 🔑 Live Demo & Credentials
+## 🧠 Technical Architecture & Data Design
 
-To test the application locally or on our deployed instance, you can use the following default credentials which are automatically seeded into the database on startup:
-
-*   **Username:** `admin`
-*   **Password:** `password123`
-
-*(Note: You can also register a new account on the login page for free. All data is stored locally).*
-
----
-
-## 🛠️ Technology Stack
-
-Cloak is built using modern, scalable, and secure technologies:
-
-**Frontend Ecosystem:**
-*   **Framework:** React (Vite, TypeScript)
-*   **Styling:** Tailwind CSS, Radix UI
-*   **Animations:** Framer Motion
-*   **State Management:** React Context API
-
-**Backend Ecosystem:**
-*   **Framework:** Python, FastAPI
-*   **Database:** SQLite via SQLAlchemy ORM
-*   **Authentication:** JWT (JSON Web Tokens), bcrypt
-
-**AI & NLP:**
-*   **Cloud LLM:** Google Gemini 2.5 Flash
-*   **Local NLP:** Microsoft Presidio, spaCy (`en_core_web_sm`)
-*   **Document Parsing:** `pdfplumber` (PDF extraction), `pytesseract` (Optical Character Recognition)
-
----
-
-## 💻 Installation & Setup
-
-Want to run Cloak on your own machine? Follow these steps:
-
-### Prerequisites
-*   Node.js (v18+)
-*   Python (3.9+)
-*   Tesseract OCR (Optional, required only for image processing)
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Anaswarakorangot/sprintfour.git
-cd sprintfour
+```mermaid
+graph TD
+    A[Raw Document / Scanned PDF / Image] --> B[Local Pre-Processing / Tesseract OCR]
+    B --> C[Local Hybrid NER Engine]
+    C --> D[Local PII Masking Engine]
+    D -->|Masked Content *******| E[Google Gemini Cloud API]
+    E --> F[Hierarchical Consensus Merger]
+    C --> F
+    F --> G[Knowledge Graph DB]
+    F --> H[Asymmetric Friction Review Interface]
+    H --> I[True-to-Life PDF / Doc / Text Export]
 ```
 
-### 2. Start the FastAPI Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # (On Windows: .\venv\Scripts\activate)
-pip install -r requirements.txt
+### 1. Hybrid Zero-Trust Data Pipeline
+To enable deep semantic context analysis without compromising user data, Cloak implements a **local-first masking model**:
+* **Local NER (Presidio + spaCy + Custom Rules):** Named Entity Recognition and custom regex rules process documents locally on the device to locate structured PII.
+* **Local Anonymization Mask:** Before transmitting content to external cloud models (like Google Gemini), all high-confidence local entities are masked directly in the character array (e.g., replacing digits with `*`).
+* **Semantic Analysis:** The cloud LLM receives a metadata-masked text payload, allowing it to perform deep semantic analysis to detect complex context-dependent leaks (e.g., descriptions of projects, relationships) without ever seeing the raw sensitive credentials.
 
-# Create a .env file and add your Gemini API Key
-echo "GEMINI_API_KEY=your_api_key_here" > .env
+### 2. Relational Knowledge Graph (KG) Memory
+Cloak utilizes a persistent SQLite-backed relational knowledge graph to trace entity connections across multiple documents over time.
 
-# Run the server
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+* **Automatic Relation Inference:** When a document is analyzed containing a single named individual and associated contact info (e.g., email or phone), the backend establishes a relational node link:
+  $$\text{Name} \overset{\text{owns}}{\longleftrightarrow} \text{Email/Phone}$$
+* **Cross-Document Memory Propagation:** In subsequent documents, if a previously mapped email appears in isolation, the KG matches the value, raises the detection confidence to maximum override, and displays the relationship trace directly in the reviewer tooltip.
 
-### 3. Start the React Frontend
-Open a new terminal window:
-```bash
-cd frontend
-npm install
-npm run dev
-```
+### 3. Hierarchical Consensus Engine
+Detections from local regex layers, local NER models, custom enterprise rules, the relational knowledge graph, and cloud semantic models are unified using a multi-pass consensus resolver.
 
-### 4. Open the App
-Navigate to `http://localhost:5173` in your browser. Log in with `admin` / `password123` and start redacting!
+* **Priority Ranking:** Conflicting spans are resolved by prioritizing:
+  $$\text{Custom Rules} > \text{Knowledge Graph} > \text{NER Model} > \text{Regex Pattern}$$
+* **Agreement Tracking:** Spans compile an agreement profile, mapping which layers flagged the entity. Reviewers can hover over any badge to inspect the exact detection footprint.
 
 ---
 
-## 🔮 Future Roadmap
+## 🔑 Demo Credentials
 
-*   **Multi-Language Support:** Expanding NLP detection beyond English using multilingual spaCy models.
-*   **Batch Processing:** Uploading ZIP files of hundreds of documents for bulk autonomous processing.
-*   **Team Collaboration:** Shared knowledge graphs and custom rules across enterprise teams.
+To test the pre-seeded databases and verify the zero-trust workflow:
+* **Username:** `admin`
+* **Password:** `password123`
 
 ---
 
