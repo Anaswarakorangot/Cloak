@@ -25,9 +25,21 @@ export function RulesPage() {
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/rules`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-    .then(r => r.json())
-    .then(data => setRules(data))
-    .catch(console.error);
+    .then(r => {
+      if (!r.ok) throw new Error('Failed to fetch rules');
+      return r.json();
+    })
+    .then(data => {
+      if (Array.isArray(data)) {
+        setRules(data);
+      } else {
+        setRules([]);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      setRules([]);
+    });
   };
 
   const handleCreateRule = async (e: React.FormEvent) => {
@@ -113,7 +125,7 @@ export function RulesPage() {
 
         <div className="space-y-4">
           <h2 className="text-lg font-bold">Active Workspace Rules</h2>
-          {rules.length === 0 ? (
+          {!Array.isArray(rules) || rules.length === 0 ? (
             <p className="text-slate-500 text-sm italic p-4 bg-slate-900/30 rounded-lg border border-slate-800/30 text-center">No custom rules defined yet.</p>
           ) : (
             rules.map(rule => (
