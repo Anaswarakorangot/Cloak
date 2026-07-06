@@ -124,11 +124,9 @@ def analyze_document_mock() -> DocumentAnalysisResult:
         ("John Doe",             "NAME",  0.98, True,  "High-confidence person name detected by NLP engine."),
         ("john.doe@example.com", "EMAIL", 0.99, True,  "Standard email regex match with full domain validation."),
         ("123-45-6789",          "SSN",   0.97, True,  "9-digit SSN format confirmed. All 3 detection layers agreed."),
-        # False Positive — project ID looks like SSN
-        ("492-11-001",           "SSN",   0.60, True,  "WARNING: Regex matched SSN pattern, but context suggests project code. Review recommended."),
-        # False Negatives — dangerous misses, HIGH risk_score
-        ("Ananya Sharma",        "NAME",  0.45, False, "Low-confidence name. Only 1 of 3 detection layers flagged this."),
-        ("555-0198",             "PHONE", 0.38, False, "7-digit local phone number. Ambiguous without area code. High false-negative risk."),
+        ("492-11-001",           "SSN",   0.88, True,  "Regex matched SSN pattern. Context analyzer confirmed high risk."),
+        ("Ananya Sharma",        "NAME",  0.95, True,  "High-confidence name confirmed by context engine."),
+        ("555-0198",             "PHONE", 0.92, True,  "Phone number format identified and validated."),
     ]
 
     spans = []
@@ -148,8 +146,8 @@ def analyze_document_mock() -> DocumentAnalysisResult:
                 model_agreement=_make_consensus(pii_type, confidence)
             ))
 
-    # CRITICAL: Sort by risk_score descending — highest danger reviewed first
-    spans.sort(key=lambda s: -s.risk_score)
+    # CRITICAL: Sort by start index so the frontend renderer correctly paints text sequentially
+    spans.sort(key=lambda s: s.start)
     unresolved_risk = sum(s.risk_score for s in spans if s.status == SpanStatus.KEPT_VISIBLE)
     return DocumentAnalysisResult(
         text=MOCK_DOCUMENT_TEXT, spans=spans,

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { DocumentViewer } from './components/DocumentViewer';
 import { Dashboard } from './components/Dashboard';
 import { LoginPage } from './components/LoginPage';
+import { DemoLoader } from './components/DemoLoader';
 import { RulesPage } from './components/RulesPage';
 import { useDocumentState } from './hooks/useDocumentState';
 import { DocumentAnalysisResult } from '@shared/types';
@@ -68,6 +69,7 @@ function MainApp() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<LoginPage initialIsLogin={false} />} />
+      <Route path="/demo" element={<DemoLoader onAnalysisComplete={handleAnalysisComplete} />} />
       <Route path="/" element={
         isAuthenticated ? (
           !state.document ? (
