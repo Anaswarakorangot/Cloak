@@ -31,7 +31,11 @@ def on_startup():
     from app.services.security import hash_password
     db = next(get_db())
     admin_user = db.query(User).filter(User.username == "admin").first()
-    if not admin_user:
+    if admin_user:
+        admin_user.hashed_password = hash_password("password123")
+        db.commit()
+        logger.info("Reset admin password to 'password123'")
+    else:
         hashed_pw = hash_password("password123")
         test_user = User(username="admin", hashed_password=hashed_pw)
         db.add(test_user)
