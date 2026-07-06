@@ -105,19 +105,20 @@ def analyze_document_mock() -> DocumentAnalysisResult:
 
     spans = []
     for text, pii_type, confidence, suggested, reason in raw:
-        start = MOCK_DOCUMENT_TEXT.find(text)
-        if start == -1: continue
-        risk = _compute_risk_score(pii_type, confidence)
-        spans.append(PIISpan(
-            id=str(uuid.uuid4()),
-            start=start, end=start + len(text),
-            text=text, type=PIIType(pii_type),
-            confidence=confidence, suggested_redaction=suggested,
-            reason=reason,
-            status=SpanStatus.PENDING,
-            risk_score=risk,
-            model_agreement=_make_consensus(pii_type, confidence)
-        ))
+        # Find all occurrences in the mock document
+        for match in re.finditer(re.escape(text), MOCK_DOCUMENT_TEXT):
+            start = match.start()
+            risk = _compute_risk_score(pii_type, confidence)
+            spans.append(PIISpan(
+                id=str(uuid.uuid4()),
+                start=start, end=start + len(text),
+                text=text, type=PIIType(pii_type),
+                confidence=confidence, suggested_redaction=suggested,
+                reason=reason,
+                status=SpanStatus.PENDING,
+                risk_score=risk,
+                model_agreement=_make_consensus(pii_type, confidence)
+            ))
 
     # CRITICAL: Sort by risk_score descending — highest danger reviewed first
     spans.sort(key=lambda s: -s.risk_score)

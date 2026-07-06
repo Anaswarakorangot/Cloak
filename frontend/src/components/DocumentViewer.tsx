@@ -65,6 +65,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const textRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text?: string, start?: number, end?: number, spanId?: string} | null>(null);
+  const [hoverTooltip, setHoverTooltip] = useState<{x: number, y: number, spanId: string} | null>(null);
   const [focusedSpanIndex, setFocusedSpanIndex] = useState<number>(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -96,11 +97,12 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === 'MARK' && target.hasAttribute('data-span-id')) {
+      if (target && target.hasAttribute && target.hasAttribute('data-span-id')) {
         const spanId = target.getAttribute('data-span-id');
         if (spanId) {
           const rect = target.getBoundingClientRect();
           setTooltip({ x: rect.left + rect.width / 2, y: rect.top, spanId });
+          setHoverTooltip(null);
         }
         return;
       }
@@ -114,9 +116,38 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         setTooltip(null);
       }
     };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!e.target || !(e.target as HTMLElement).closest) return;
+      const target = e.target as HTMLElement;
+      
+      // If the click menu is open, don't show hover tooltips
+      const tooltipEl = window.document.getElementById('redaction-tooltip');
+      if (tooltipEl && tooltipEl.contains(target)) return;
+      
+      const markNode = target.closest('[data-span-id]');
+      
+      if (markNode) {
+        const spanId = markNode.getAttribute('data-span-id');
+        if (spanId) {
+          const rect = markNode.getBoundingClientRect();
+          setHoverTooltip(prev => {
+            if (prev && prev.spanId === spanId) return prev; // Avoid unnecessary re-renders
+            return { x: rect.left + rect.width / 2, y: rect.top, spanId };
+          });
+        }
+      } else {
+        setHoverTooltip(prev => prev ? null : prev);
+      }
+    };
+
     window.addEventListener('mousedown', handleDocumentClick);
-    return () => window.removeEventListener('mousedown', handleDocumentClick);
-  }, []);
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousedown', handleDocumentClick);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [tooltip]);
 
   if (loading) {
     return (
@@ -250,23 +281,14 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             markStyle += " background-color: rgba(0, 0, 0, 0.3); color: inherit; border-bottom: 2px dashed rgba(0, 0, 0, 0.6);";
         }
 
-        let titleText = `Type: ${span.type} | Confidence: ${(span.confidence * 100).toFixed(0)}%&#10;`;
-        titleText += `Reason: ${span.reason || 'No reason provided.'}`;
-        if (span.model_agreement) {
-          const agreedModels = span.model_agreement.filter((m: any) => m.agreed).map((m: any) => m.model);
-          if (agreedModels.length > 0) {
-            titleText += `&#10;Models: ${agreedModels.join(', ')}`;
-          }
-        }
-        titleText = titleText.replace(/"/g, '&quot;');
 
         // Only replace if the text exists and isn't already inside a mark tag attribute
         if (str.includes(span.text)) {
            // Basic protection against replacing inside an already added HTML tag
            const parts = str.split(span.text);
-           str = parts.join(`<mark style="${markStyle} cursor: pointer;" title="${titleText}" data-span-id="${span.id}">${span.text}</mark>`);
+           str = parts.join(`<mark style="${markStyle} cursor: pointer;" data-span-id="${span.id}">${span.text}</mark>`);
         } else if (span.text.includes(str.trim()) && str.trim().length > 3) {
-           str = `<mark style="${markStyle} cursor: pointer;" title="${titleText}" data-span-id="${span.id}">${str}</mark>`;
+           str = `<mark style="${markStyle} cursor: pointer;" data-span-id="${span.id}">${str}</mark>`;
         }
       }
       return str;
@@ -279,6 +301,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
       const rect = e ? (e.target as HTMLElement).getBoundingClientRect() : null;
       if (rect) {
         setTooltip({ x: rect.left + rect.width / 2, y: rect.top, spanId: span.id });
+        setHoverTooltip(null);
       } else {
         revertSpanStatus(span.id);
       }
@@ -563,21 +586,41 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           className="fixed z-50 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2 ring-1 ring-white/5"
           style={{ top: tooltip.y - 45, left: tooltip.x }}
         >
-          {tooltip.spanId ? (
-            <div className="flex flex-col items-center">
-              <span className="text-xs font-semibold text-slate-300 mb-2">Manage Resolved Item</span>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  revertSpanStatus(tooltip.spanId!);
-                  setTooltip(null);
-                }}
-                className="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 py-1.5 rounded transition-all duration-200 border border-amber-500/30"
-              >
-                ⤺ Revert to Pending
-              </button>
-            </div>
-          ) : (
+          {tooltip.spanId ? (() => {
+            const span = document?.spans.find(s => s.id === tooltip.spanId);
+            const isHighRisk = span && (
+              span.type === PIIType.SSN || 
+              span.type === PIIType.CREDIT_CARD || 
+              span.type === PIIType.BANK_ACCOUNT || 
+              span.confidence >= 0.8 || 
+              (span.risk_score ?? 0) >= 8
+            );
+            
+            return (
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-semibold text-slate-300 mb-2">Manage Resolved Item</span>
+                {isHighRisk && (
+                  <div className="bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded flex items-center gap-1.5 mb-3 max-w-[200px]">
+                    <span className="text-rose-500 text-xs font-bold leading-tight">⚠️ HIGH SENSITIVITY: Think carefully before unredacting!</span>
+                  </div>
+                )}
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    revertSpanStatus(tooltip.spanId!);
+                    setTooltip(null);
+                  }}
+                  className={`text-xs font-bold px-4 py-1.5 rounded transition-all duration-200 border ${
+                    isHighRisk 
+                      ? 'bg-rose-900/40 hover:bg-rose-800 text-rose-300 border-rose-500/30 hover:border-rose-400' 
+                      : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border-amber-500/30'
+                  }`}
+                >
+                  ⤺ {isHighRisk ? 'Unredact Anyway' : 'Revert to Pending'}
+                </button>
+              </div>
+            );
+          })() : (
             <>
               <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-orange-300 uppercase tracking-wider">Redact as:</span>
               {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
@@ -598,6 +641,53 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         window.document.body
       )}
       </AnimatePresence>
+
+      {/* Hover Info Tooltip */}
+      {createPortal(
+        <AnimatePresence>
+          {hoverTooltip && !tooltip && (() => {
+            const span = document?.spans.find(s => s.id === hoverTooltip.spanId);
+            if (!span) return null;
+            
+            const agreedModels = span.model_agreement?.filter((m: any) => m.agreed).map((m: any) => m.model) || [];
+
+            return (
+              <motion.div 
+                key={`hover-tooltip-${span.id}`}
+                initial={{ opacity: 0, y: "calc(-100% + 5px)", scale: 0.95, x: "-50%" }}
+                animate={{ opacity: 1, y: "-100%", scale: 1, x: "-50%" }}
+                exit={{ opacity: 0, scale: 0.95, x: "-50%", y: "-100%" }}
+                transition={{ duration: 0.15 }}
+                className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-1.5 w-64 pointer-events-none rounded-lg"
+                style={{ top: hoverTooltip.y - 10, left: hoverTooltip.x }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                    {span.type}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                    span.confidence >= 0.7 ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                  }`}>
+                    {(span.confidence * 100).toFixed(0)}% CONFIDENCE
+                  </span>
+                </div>
+                
+                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                  {span.reason || 'Detected as potential PII.'}
+                </p>
+
+                {agreedModels.length > 0 && (
+                  <div className="mt-1 pt-1.5 border-t border-slate-700/50 flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Models:</span>
+                    <span className="text-[10px] text-indigo-300 font-medium">{agreedModels.join(', ')}</span>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>,
+        window.document.body
+      )}
     </div>
   );
 }

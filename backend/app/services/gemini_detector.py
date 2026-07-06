@@ -4,7 +4,7 @@ import json
 import re
 import logging
 from dotenv import load_dotenv
-from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult, SpanStatus
+from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult, SpanStatus, ModelAgreement
 
 load_dotenv()
 
@@ -141,7 +141,8 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
                 confidence=confidence,
                 suggested_redaction=suggested_redaction,
                 reason=reason,
-                status=SpanStatus.REDACTED if suggested_redaction else SpanStatus.PENDING
+                status=SpanStatus.REDACTED if suggested_redaction else SpanStatus.PENDING,
+                model_agreement=[ModelAgreement(model="Gemini 2.5 Flash", agreed=True)]
             ))
 
         # 4. Merge local spans and Gemini spans
@@ -166,9 +167,20 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
                 deduplicated.append(span)
                 last_end = span.end
             else:
-                if deduplicated and span.confidence > deduplicated[-1].confidence:
+                # Spans overlap. Keep the highest confidence one, but merge the model agreements.
+                existing = deduplicated[-1]
+                
+                # Merge models
+                merged_models = {m.model: m for m in (existing.model_agreement or [])}
+                for m in (span.model_agreement or []):
+                    merged_models[m.model] = m
+                    
+                if span.confidence > existing.confidence:
+                    span.model_agreement = list(merged_models.values())
                     deduplicated[-1] = span
                     last_end = span.end
+                else:
+                    existing.model_agreement = list(merged_models.values())
 
         logger.info(f"Gemini (Hybrid) detected {len(deduplicated)} PII spans.")
         return DocumentAnalysisResult(text=text, spans=deduplicated, classification=local_result.classification)

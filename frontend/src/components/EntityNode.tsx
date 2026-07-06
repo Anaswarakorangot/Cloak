@@ -12,15 +12,8 @@ export function EntityNode({ span, onClick, isFinalPreview = false }: Props) {
   const risk = span.risk_score ?? 0;
 
   const getTooltipText = () => {
-    let text = `Type: ${span.type} | Confidence: ${(span.confidence * 100).toFixed(0)}%\n`;
-    text += `Reason: ${span.reason || 'No reason provided.'}`;
-    if (span.model_agreement) {
-      const agreedModels = span.model_agreement.filter(m => m.agreed).map(m => m.model);
-      if (agreedModels.length > 0) {
-        text += `\nModels: ${agreedModels.join(', ')}`;
-      }
-    }
-    return text;
+    // No longer generating string, using new DocumentViewer hoverTooltip
+    return '';
   };
 
   const titleText = getTooltipText();
@@ -28,13 +21,17 @@ export function EntityNode({ span, onClick, isFinalPreview = false }: Props) {
   if (isFinalPreview) {
     if (status === 'REDACTED') {
       return (
-        <span className="bg-black text-transparent select-none rounded-sm px-1 cursor-pointer hover:ring-2 hover:ring-amber-500 transition-all" title={titleText} onClick={(e) => onClick(span, e)}>
+        <span 
+          className="bg-black text-transparent select-none rounded-sm px-1 cursor-pointer hover:ring-2 hover:ring-amber-500 transition-all" 
+          data-span-id={span.id}
+          onClick={(e) => onClick(span, e)}
+        >
           {span.text}
         </span>
       );
     }
     // If it's not redacted in final preview, it leaks as plain text.
-    return <span title={titleText} onClick={(e) => onClick(span, e)} className="cursor-pointer hover:bg-slate-800 rounded px-0.5">{span.text}</span>;
+    return <span data-span-id={span.id} onClick={(e) => onClick(span, e)} className="cursor-pointer hover:bg-slate-800 rounded px-0.5">{span.text}</span>;
   }
 
   let cls = 'cursor-pointer rounded-sm mx-0.5 px-0.5 transition-all duration-200 inline ';
@@ -61,7 +58,7 @@ export function EntityNode({ span, onClick, isFinalPreview = false }: Props) {
   }
 
   return (
-    <span className={cls} onClick={(e) => onClick(span, e)} title={titleText}>
+    <span className={cls} onClick={(e) => onClick(span, e)} data-span-id={span.id}>
       {status === 'REDACTED' ? `[${span.type}]` : span.text}
     </span>
   );
