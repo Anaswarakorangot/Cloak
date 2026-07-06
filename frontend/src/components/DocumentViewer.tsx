@@ -208,17 +208,42 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     }
   };
 
-  const textRenderer = React.useCallback(
-    (textItem: any) => {
+  const getTextRenderer = React.useCallback(
+    (isFinalPreview: boolean) => (textItem: any) => {
       let str = textItem.str;
       if (!document?.spans) return str;
       
-      const activeSpans = document.spans.filter(s => s.suggested_redaction);
-      const markStyle = "background-color: black; color: transparent; border-radius: 2px; padding: 0.25em 0; margin: -0.25em 0; display: inline-block; line-height: 1; box-shadow: 0 0 2px black;";
+      const activeSpans = isFinalPreview 
+        ? document.spans.filter(s => s.status === 'REDACTED')
+        : document.spans.filter(s => s.status !== 'KEPT_VISIBLE' && s.suggested_redaction);
+      
+      // Deduplicate by text to prevent nested <mark> tags stacking opacity
+      const uniqueTextMap = new Map<string, any>();
       for (const span of activeSpans) {
         if (span.text.length < 2) continue;
+        // Prefer REDACTED if there are mixed statuses for the same text
+        if (!uniqueTextMap.has(span.text) || span.status === 'REDACTED') {
+          uniqueTextMap.set(span.text, span);
+        }
+      }
+
+      // Sort by length descending so longer phrases are replaced before shorter words inside them
+      const sortedUniqueSpans = Array.from(uniqueTextMap.values()).sort((a, b) => b.text.length - a.text.length);
+
+      for (const span of sortedUniqueSpans) {
+        let markStyle = "border-radius: 2px; padding: 0.25em 0; margin: -0.25em 0; display: inline-block; line-height: 1;";
+        
+        if (isFinalPreview || span.status === 'REDACTED') {
+            markStyle += " background-color: black; color: transparent; box-shadow: 0 0 2px black;";
+        } else {
+            markStyle += " background-color: rgba(0, 0, 0, 0.3); color: inherit; border-bottom: 2px dashed rgba(0, 0, 0, 0.6);";
+        }
+
+        // Only replace if the text exists and isn't already inside a mark tag attribute
         if (str.includes(span.text)) {
-           str = str.split(span.text).join(`<mark style="${markStyle}">${span.text}</mark>`);
+           // Basic protection against replacing inside an already added HTML tag
+           const parts = str.split(span.text);
+           str = parts.join(`<mark style="${markStyle}">${span.text}</mark>`);
         } else if (span.text.includes(str.trim()) && str.trim().length > 3) {
            str = `<mark style="${markStyle}">${str}</mark>`;
         }
@@ -297,7 +322,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             pageNumber={pageNumber} 
             renderTextLayer={true} 
             renderAnnotationLayer={true}
-            customTextRenderer={textRenderer}
+            customTextRenderer={getTextRenderer(isFinalPreview)}
             className="shadow-2xl border border-white/10"
             width={800}
           />

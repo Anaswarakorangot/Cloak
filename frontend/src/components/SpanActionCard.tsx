@@ -46,25 +46,31 @@ export function SpanActionCard({ span, instanceCount, onApprove, onStage, onConf
       <p className="text-xs text-neutral-500 italic mb-3 leading-tight">{span.reason}</p>
 
       {/* ASYMMETRIC FRICTION BUTTONS — the PS3 core */}
-      {!isHighRisk ? (
-        // STANDARD: Fast single click
+      <div className="flex gap-2">
+        {/* SAFE ACTION: Always 1 click, always available */}
         <button onClick={(e) => { e.stopPropagation(); onApprove(span.id); }}
-          className="w-full bg-neutral-700 hover:bg-neutral-600 text-white text-xs py-1.5 rounded transition-colors">
-          ✓ Approve Redaction
+          className="flex-1 bg-neutral-700 hover:bg-neutral-600 text-white text-xs py-1.5 rounded transition-colors flex items-center justify-center gap-1 font-semibold">
+          ✓ Redact
         </button>
-      ) : isStaged ? (
-        // HIGH RISK STEP 2: Scary, red, forces Sam to consciously commit
-        <button onClick={(e) => { e.stopPropagation(); onConfirm(span.id); }}
-          className="w-full bg-red-800 hover:bg-red-700 text-white text-xs py-2 rounded font-bold animate-pulse">
-          ⚠ CONFIRM — I accept this may expose PII
-        </button>
-      ) : (
-        // HIGH RISK STEP 1: Yellow gateway — breaks autopilot
-        <button onClick={(e) => { e.stopPropagation(); onStage(span.id); }}
-          className="w-full bg-amber-800/40 hover:bg-amber-700/40 text-amber-200 text-xs py-1.5 rounded transition-colors">
-          Stage to Dismiss (1 of 2 steps required)
-        </button>
-      )}
+
+        {/* DANGEROUS ACTION: Varies based on risk */}
+        {!isHighRisk ? (
+          <button onClick={(e) => { e.stopPropagation(); onConfirm(span.id); }}
+            className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-400 text-xs py-1.5 rounded transition-colors">
+            Dismiss
+          </button>
+        ) : isStaged ? (
+          <button onClick={(e) => { e.stopPropagation(); onConfirm(span.id); }}
+            className="flex-1 bg-red-800 hover:bg-red-700 text-white text-xs py-1.5 rounded font-bold animate-pulse">
+            ⚠ Confirm Leak
+          </button>
+        ) : (
+          <button onClick={(e) => { e.stopPropagation(); onStage(span.id); }}
+            className="flex-1 bg-amber-800/40 hover:bg-amber-700/40 text-amber-200 text-xs py-1.5 rounded transition-colors">
+            Stage Dismiss
+          </button>
+        )}
+      </div>
 
       {/* Smart Deduplication — show if 2+ identical instances */}
       {instanceCount > 1 && (
