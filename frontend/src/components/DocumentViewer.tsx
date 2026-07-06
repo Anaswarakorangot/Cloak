@@ -97,15 +97,6 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target && target.hasAttribute && target.hasAttribute('data-span-id')) {
-        const spanId = target.getAttribute('data-span-id');
-        if (spanId) {
-          const rect = target.getBoundingClientRect();
-          setTooltip({ x: rect.left + rect.width / 2, y: rect.top, spanId });
-          setHoverTooltip(null);
-        }
-        return;
-      }
       
       const tooltipEl = window.document.getElementById('redaction-tooltip');
       if (
@@ -124,6 +115,10 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
       // If the click menu is open, don't show hover tooltips
       const tooltipEl = window.document.getElementById('redaction-tooltip');
       if (tooltipEl && tooltipEl.contains(target)) return;
+
+      // If hovering over the hover tooltip itself, keep it open!
+      const hoverTooltipEl = window.document.getElementById('hover-tooltip-div');
+      if (hoverTooltipEl && hoverTooltipEl.contains(target)) return;
       
       const markNode = target.closest('[data-span-id]');
       
@@ -211,42 +206,18 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
 
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const text = selection.toString().trim();
+    // Clean up text from pdf text layer artifacts
+    const text = selection.toString().replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
     
     if (text.length > 0) {
-      let node = range.startContainer;
-      let parentSpan = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
-      while (parentSpan && !parentSpan.hasAttribute('data-index') && parentSpan !== textRef.current) {
-        parentSpan = parentSpan.parentElement;
-      }
-      
-      const dataIndexStr = parentSpan?.getAttribute('data-index');
-      let exactStart = dataIndexStr ? parseInt(dataIndexStr, 10) : -1;
-      
-      if (exactStart !== -1 && node.nodeType === Node.TEXT_NODE) {
-        exactStart += range.startOffset;
-      }
-      
-      if (exactStart !== -1 && document.text.substring(exactStart, exactStart + text.length) === text) {
-        setTooltip({
-          x: rect.left + (rect.width / 2),
-          y: rect.top - 10,
-          text,
-          start: exactStart,
-          end: exactStart + text.length
-        });
-      } else {
-        const start = document.text.indexOf(text, Math.max(0, exactStart - 5)); 
-        if (start !== -1) {
-          setTooltip({
-            x: rect.left + (rect.width / 2),
-            y: rect.top - 10,
-            text,
-            start,
-            end: start + text.length
-          });
-        }
-      }
+      // Just show the tooltip! addRedaction will use regex to find all occurrences globally.
+      setTooltip({
+        x: rect.left + (rect.width / 2),
+        y: rect.top - 10,
+        text,
+        start: 0,
+        end: text.length
+      });
     }
   };
 
@@ -586,41 +557,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           className="fixed z-50 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2 ring-1 ring-white/5"
           style={{ top: tooltip.y - 45, left: tooltip.x }}
         >
-          {tooltip.spanId ? (() => {
-            const span = document?.spans.find(s => s.id === tooltip.spanId);
-            const isHighRisk = span && (
-              span.type === PIIType.SSN || 
-              span.type === PIIType.CREDIT_CARD || 
-              span.type === PIIType.BANK_ACCOUNT || 
-              span.confidence >= 0.8 || 
-              (span.risk_score ?? 0) >= 8
-            );
-            
-            return (
-              <div className="flex flex-col items-center">
-                <span className="text-xs font-semibold text-slate-300 mb-2">Manage Resolved Item</span>
-                {isHighRisk && (
-                  <div className="bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded flex items-center gap-1.5 mb-3 max-w-[200px]">
-                    <span className="text-rose-500 text-xs font-bold leading-tight">⚠️ HIGH SENSITIVITY: Think carefully before unredacting!</span>
-                  </div>
-                )}
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    revertSpanStatus(tooltip.spanId!);
-                    setTooltip(null);
-                  }}
-                  className={`text-xs font-bold px-4 py-1.5 rounded transition-all duration-200 border ${
-                    isHighRisk 
-                      ? 'bg-rose-900/40 hover:bg-rose-800 text-rose-300 border-rose-500/30 hover:border-rose-400' 
-                      : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border-amber-500/30'
-                  }`}
-                >
-                  ⤺ {isHighRisk ? 'Unredact Anyway' : 'Revert to Pending'}
-                </button>
-              </div>
-            );
-          })() : (
+          {tooltip.text && (
             <>
               <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-orange-300 uppercase tracking-wider">Redact as:</span>
               {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
@@ -654,11 +591,12 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             return (
               <motion.div 
                 key={`hover-tooltip-${span.id}`}
+                id="hover-tooltip-div"
                 initial={{ opacity: 0, y: "calc(-100% + 5px)", scale: 0.95, x: "-50%" }}
                 animate={{ opacity: 1, y: "-100%", scale: 1, x: "-50%" }}
                 exit={{ opacity: 0, scale: 0.95, x: "-50%", y: "-100%" }}
                 transition={{ duration: 0.15 }}
-                className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-1.5 w-64 pointer-events-none rounded-lg"
+                className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-1.5 w-64 pointer-events-auto rounded-lg"
                 style={{ top: hoverTooltip.y - 10, left: hoverTooltip.x }}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -682,6 +620,38 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                     <span className="text-[10px] text-indigo-300 font-medium">{agreedModels.join(', ')}</span>
                   </div>
                 )}
+
+                {span.status === 'REDACTED' && (() => {
+                  const isHighRisk = span.type === PIIType.SSN || 
+                    span.type === PIIType.CREDIT_CARD || 
+                    span.type === PIIType.BANK_ACCOUNT || 
+                    span.confidence >= 0.8 || 
+                    (span.risk_score ?? 0) >= 8;
+                  
+                  return (
+                    <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col items-stretch gap-2">
+                      {isHighRisk && (
+                        <div className="bg-rose-500/10 border border-rose-500/20 px-2 py-1.5 rounded flex items-start gap-1.5">
+                          <span className="text-rose-500 text-[10px] font-bold leading-tight uppercase">⚠️ High Sensitivity: Think carefully before unredacting!</span>
+                        </div>
+                      )}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          revertSpanStatus(span.id);
+                          setHoverTooltip(null);
+                        }}
+                        className={`text-xs font-bold px-3 py-1.5 rounded transition-all duration-200 border w-full text-center ${
+                          isHighRisk 
+                            ? 'bg-rose-900/40 hover:bg-rose-800 text-rose-300 border-rose-500/30 hover:border-rose-400' 
+                            : 'bg-slate-800 hover:bg-slate-700 text-amber-400 border-amber-500/30'
+                        }`}
+                      >
+                        ⤺ {isHighRisk ? 'Unredact Anyway' : 'Revert to Pending'}
+                      </button>
+                    </div>
+                  );
+                })()}
               </motion.div>
             );
           })()}
