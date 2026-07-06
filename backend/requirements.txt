@@ -10,3 +10,4 @@ pdfplumber
 pytesseract
 pillow
 pdf2image
+python-dotenv
