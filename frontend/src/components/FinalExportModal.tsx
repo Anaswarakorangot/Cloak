@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PIISpan } from '@shared/types';
+import { X } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -32,10 +33,10 @@ export function FinalExportModal({ isOpen, onClose, onConfirm, spans }: Props) {
       <div className="bg-[#111111] border border-neutral-700 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors p-1"
+          className="absolute -top-3 -right-3 w-8 h-8 flex items-center justify-center bg-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-700 rounded-full border border-neutral-600 transition-all shadow-lg z-50"
           title="Close"
         >
-          ✕
+          <X size={16} />
         </button>
 
         {state === 'scanning' && (
