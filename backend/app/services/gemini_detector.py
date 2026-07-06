@@ -17,7 +17,7 @@ Analyze the provided text and identify ALL spans of sensitive information.
 
 Return a JSON array of objects. Each object must have:
 - "text": the exact string from the document
-- "type": one of "NAME", "EMAIL", "PHONE", "SSN", "ADDRESS", "DOB", "UNKNOWN"
+- "type": one of "NAME", "EMAIL", "PHONE", "SSN", "ADDRESS", "DOB", "CREDIT_CARD", "BANK_ACCOUNT", "IP_ADDRESS", "MAC_ADDRESS", "PASSPORT", "DRIVER_LICENSE", "CRYPTO_WALLET", "VIN", "TAX_ID", "MEDICAL_RECORD", "CUSTOM", "UNKNOWN"
 - "confidence": a float between 0.0 and 1.0 indicating your certainty
 - "reason": a concise one-sentence explanation of why this was flagged
 

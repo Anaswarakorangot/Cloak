@@ -105,6 +105,8 @@ PII_PATTERNS = [
     (r'\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\b', PIIType.MAC_ADDRESS, 0.85, "Matches MAC address"),
     # US Passport
     (r'\b[A-Z]{1,2}\d{6,9}\b', PIIType.PASSPORT, 0.85, "Matches alphanumeric passport number format"),
+    # Driver's License
+    (r'\b(?:DL-)?[A-Z]{1,2}[ -]?\d{6,8}[ -]?[A-Z0-9]?\b', PIIType.DRIVER_LICENSE, 0.85, "Matches generic driver's license formats"),
     # Crypto Wallets (BTC, ETH)
     (r'\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\b', PIIType.CRYPTO_WALLET, 0.90, "Matches Bitcoin wallet address"),
     (r'\b0x[a-fA-F0-9]{40}\b', PIIType.CRYPTO_WALLET, 0.95, "Matches Ethereum wallet address"),
@@ -234,10 +236,10 @@ def analyze_text_local(text: str, custom_rules: list = None, knowledge_graph: li
             "EMAIL_ADDRESS": PIIType.EMAIL,
             "PHONE_NUMBER": PIIType.PHONE,
             "US_SSN": PIIType.SSN,
-            "US_PASSPORT": PIIType.UNKNOWN,
-            "US_DRIVER_LICENSE": PIIType.UNKNOWN,
-            "US_BANK_NUMBER": PIIType.UNKNOWN,
-            "CREDIT_CARD": PIIType.UNKNOWN,
+            "US_PASSPORT": PIIType.PASSPORT,
+            "US_DRIVER_LICENSE": PIIType.DRIVER_LICENSE,
+            "US_BANK_NUMBER": PIIType.BANK_ACCOUNT,
+            "CREDIT_CARD": PIIType.CREDIT_CARD,
             "LOCATION": PIIType.ADDRESS,
             # "DATE_TIME": PIIType.DOB, # Disabled to prevent false positives on phrases like "upcoming quarter"
         }
