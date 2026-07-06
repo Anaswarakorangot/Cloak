@@ -565,7 +565,8 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                   key={type}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAddRedaction(type);
+                    onAddRedaction(tooltip.text!, tooltip.start!, tooltip.end!, type);
+                    setTooltip(null);
                   }}
                   className="text-xs font-medium hover:bg-orange-500/20 hover:text-orange-200 px-2 py-1.5 rounded transition-all duration-200"
                 >
@@ -621,7 +622,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                   </div>
                 )}
 
-                {span.status === 'REDACTED' && (() => {
+                {span.status === 'REDACTED' ? (() => {
                   const isHighRisk = span.type === PIIType.SSN || 
                     span.type === PIIType.CREDIT_CARD || 
                     span.type === PIIType.BANK_ACCOUNT || 
@@ -651,7 +652,20 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                       </button>
                     </div>
                   );
-                })()}
+                })() : (
+                  <div className="mt-2 pt-2 border-t border-slate-700/50 flex flex-col items-stretch gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        confirmRedaction(span.id);
+                        setHoverTooltip(null);
+                      }}
+                      className="text-xs font-bold px-3 py-1.5 rounded transition-all duration-200 border w-full text-center bg-emerald-900/40 hover:bg-emerald-800 text-emerald-400 border-emerald-500/30"
+                    >
+                      ✓ Redact Item
+                    </button>
+                  </div>
+                )}
               </motion.div>
             );
           })()}
