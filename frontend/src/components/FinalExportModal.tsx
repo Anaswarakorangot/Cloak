@@ -29,7 +29,14 @@ export function FinalExportModal({ isOpen, onClose, onConfirm, spans }: Props) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-[#111111] border border-neutral-700 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+      <div className="bg-[#111111] border border-neutral-700 rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 text-neutral-400 hover:text-white transition-colors p-1"
+          title="Close"
+        >
+          ✕
+        </button>
 
         {state === 'scanning' && (
           <div className="text-center">
