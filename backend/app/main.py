@@ -26,6 +26,17 @@ app = FastAPI(title="Cloak API", version="2.0.0")
 def on_startup():
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables initialized.")
+    
+    # Automatically seed a test user for hackathon judges
+    from app.services.security import hash_password
+    db = next(get_db())
+    admin_user = db.query(User).filter(User.username == "admin").first()
+    if not admin_user:
+        hashed_pw = hash_password("password123")
+        test_user = User(username="admin", hashed_password=hashed_pw)
+        db.add(test_user)
+        db.commit()
+        logger.info("Seeded default test user: admin / password123")
 
 app.include_router(auth_router)
 app.include_router(rules_router)
