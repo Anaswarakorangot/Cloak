@@ -12,6 +12,16 @@ class PIIType(str, Enum):
     UNKNOWN = "UNKNOWN"
     CUSTOM = "CUSTOM"
     MANUAL_TAG = "MANUAL_TAG"  # User manually highlighted this
+    CREDIT_CARD = "CREDIT_CARD"
+    BANK_ACCOUNT = "BANK_ACCOUNT"
+    IP_ADDRESS = "IP_ADDRESS"
+    MAC_ADDRESS = "MAC_ADDRESS"
+    PASSPORT = "PASSPORT"
+    DRIVER_LICENSE = "DRIVER_LICENSE"
+    CRYPTO_WALLET = "CRYPTO_WALLET"
+    VIN = "VIN"
+    TAX_ID = "TAX_ID"
+    MEDICAL_RECORD = "MEDICAL_RECORD"
 
 class SpanStatus(str, Enum):
     REDACTED = "REDACTED"
@@ -21,9 +31,12 @@ class SpanStatus(str, Enum):
 
 # The severity weight table — drives the risk score formula
 SEVERITY_WEIGHTS: Dict[str, float] = {
-    "SSN": 1.00, "CUSTOM": 0.95, "PHONE": 0.80,
+    "SSN": 1.00, "CREDIT_CARD": 0.98, "BANK_ACCOUNT": 0.98, "PASSPORT": 0.97,
+    "CRYPTO_WALLET": 0.96, "TAX_ID": 0.95, "MEDICAL_RECORD": 0.95,
+    "DRIVER_LICENSE": 0.92, "CUSTOM": 0.90, "PHONE": 0.80,
     "EMAIL": 0.75, "NAME": 0.60, "ADDRESS": 0.55,
-    "DOB": 0.50, "UNKNOWN": 0.40, "MANUAL_TAG": 1.0,
+    "IP_ADDRESS": 0.40, "MAC_ADDRESS": 0.35, "VIN": 0.30,
+    "DOB": 0.20, "UNKNOWN": 0.10, "MANUAL_TAG": 1.00
 }
 
 class PIISpan(BaseModel):

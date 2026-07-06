@@ -89,9 +89,25 @@ PII_PATTERNS = [
     (r'\b\d{1,5}\s+[A-Z][a-zA-Z\s,]+(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Court|Ct|Place|Pl|Drive|Boulevard)(?:[^.!?\n]{0,50}?,\s*[A-Z]{2}\s+\d{5})?\b\.?', PIIType.ADDRESS, 0.82, "Matches common street address structure"),
     # Zip codes (standalone 5 or 9 digit)
     (r'\b\d{5}(?:-\d{4})?\b', PIIType.ADDRESS, 0.55, "Matches standalone 5-digit or 9-digit zip code format"),
-    # Account numbers (e.g. #8899-0012-4451)
-    (r'\b#?\d{4,}-\d{4,}-\d{4,}\b', PIIType.CUSTOM, 0.90, "Matches typical bank/account number format"),
-    # Removing overly broad name regex to prevent false positives on addresses. We rely on Presidio for NAMES.
+    # Bank Account numbers (e.g. #8899-0012-4451)
+    (r'\b#?\d{4,}-\d{4,}-\d{4,}\b', PIIType.BANK_ACCOUNT, 0.90, "Matches typical bank/account number format"),
+    # Credit Card (Visa, MasterCard, Amex, Discover)
+    (r'\b(?:\d{4}[ -]?){3}\d{4}\b', PIIType.CREDIT_CARD, 0.95, "Matches standard 16-digit credit card pattern"),
+    (r'\b3[47]\d{2}[ -]?\d{6}[ -]?\d{5}\b', PIIType.CREDIT_CARD, 0.95, "Matches Amex credit card pattern"),
+    # IP Addresses (IPv4 and basic IPv6)
+    (r'\b(?:\d{1,3}\.){3}\d{1,3}\b', PIIType.IP_ADDRESS, 0.75, "Matches IPv4 address"),
+    (r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b', PIIType.IP_ADDRESS, 0.75, "Matches IPv6 address"),
+    # MAC Address
+    (r'\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\b', PIIType.MAC_ADDRESS, 0.85, "Matches MAC address"),
+    # US Passport
+    (r'\b[A-Z]{1,2}\d{6,9}\b', PIIType.PASSPORT, 0.85, "Matches alphanumeric passport number format"),
+    # Crypto Wallets (BTC, ETH)
+    (r'\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\b', PIIType.CRYPTO_WALLET, 0.90, "Matches Bitcoin wallet address"),
+    (r'\b0x[a-fA-F0-9]{40}\b', PIIType.CRYPTO_WALLET, 0.95, "Matches Ethereum wallet address"),
+    # Vehicle Identification Number (VIN)
+    (r'\b[A-HJ-NPR-Z0-9]{17}\b', PIIType.VIN, 0.60, "Matches 17-character VIN pattern"),
+    # Tax/Employer ID
+    (r'\b\d{2}-\d{7}\b', PIIType.TAX_ID, 0.88, "Matches US EIN/Tax ID format"),
 ]
 
 
