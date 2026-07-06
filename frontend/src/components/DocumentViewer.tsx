@@ -7,7 +7,7 @@ import { SpanActionCard } from './SpanActionCard';
 import { PIIType, DocumentAnalysisResult } from '@shared/types';
 import { cn } from '../lib/utils';
 import * as Popover from '@radix-ui/react-popover';
-import { Info, ShieldAlert, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Info, ShieldAlert, CheckCircle2, ChevronLeft, ChevronRight, SlidersHorizontal, Eye, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Document as PdfDocument, Page as PdfPage, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -70,6 +70,29 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.7);
+  const [aiPreviewMode, setAiPreviewMode] = useState<boolean>(false);
+
+  const downloadAuditCSV = () => {
+    if (!document) return;
+    const headers = ['Type', 'Text', 'Confidence', 'Status', 'Risk Score', 'Reason'];
+    const rows = document.spans.map(s => [
+      s.type,
+      `"${s.text.replace(/"/g, '""')}"`,
+      s.confidence.toFixed(2),
+      s.status,
+      (s.risk_score ?? 0).toFixed(3),
+      `"${(s.reason || '').replace(/"/g, '""')}"`
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = `cloak_audit_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     if (fileName.toLowerCase().endsWith('.pdf') && document?.document_id) {
@@ -426,7 +449,32 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         
         {reviewMode ? (
           <div className="flex-1 flex w-full overflow-hidden bg-[#1e1e1e] min-h-0">
-            {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
+            {aiPreviewMode ? (
+              <div className="flex-1 w-full min-h-0 p-8 text-slate-200 leading-[2.5] text-[17px] whitespace-pre-wrap font-mono overflow-y-auto bg-slate-950">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-lg mb-6 flex items-center gap-2">
+                  <Eye size={14} className="text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">AI Preview Mode</span>
+                  <span className="text-xs text-emerald-400/70 ml-2">— This is exactly what a downstream AI model will receive</span>
+                </div>
+                {(() => {
+                  let result = document.text;
+                  const typeCounters: Record<string, number> = {};
+                  const tokenMap: Record<string, string> = {};
+                  const sorted = [...document.spans]
+                    .filter(s => s.suggested_redaction && s.confidence >= confidenceThreshold)
+                    .sort((a, b) => b.start - a.start);
+                  for (const span of sorted) {
+                    const key = `${span.type}-${span.text.toLowerCase()}`;
+                    if (!tokenMap[key]) {
+                      typeCounters[span.type] = (typeCounters[span.type] || 0) + 1;
+                      tokenMap[key] = `[${span.type}_${typeCounters[span.type]}]`;
+                    }
+                    result = result.slice(0, span.start) + tokenMap[key] + result.slice(span.end);
+                  }
+                  return result;
+                })()}
+              </div>
+            ) : !(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
               <div 
                 ref={textRef}
                 className="flex-1 w-full min-h-0 p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto"
@@ -481,6 +529,54 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                <span className="bg-slate-800 px-1.5 py-0.5 rounded text-emerald-300">Del Ignore</span>
             </div>
           </div>
+
+          {/* Confidence Threshold Slider */}
+          <div className="px-4 py-3 border-b border-slate-800/60 bg-slate-900/50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <SlidersHorizontal size={13} className="text-indigo-400" />
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Confidence Threshold</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                {(confidenceThreshold * 100).toFixed(0)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={confidenceThreshold * 100}
+              onChange={(e) => setConfidenceThreshold(Number(e.target.value) / 100)}
+              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            />
+            <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+              <span>Show All</span>
+              <span>High Confidence Only</span>
+            </div>
+          </div>
+
+          {/* AI Preview + CSV Audit Buttons */}
+          <div className="px-4 py-2.5 border-b border-slate-800/60 flex items-center gap-2">
+            <button
+              onClick={() => setAiPreviewMode(!aiPreviewMode)}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border ${
+                aiPreviewMode
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                  : 'bg-slate-800/80 text-slate-400 border-slate-700/50 hover:bg-slate-700 hover:text-slate-200'
+              }`}
+            >
+              <Eye size={13} />
+              {aiPreviewMode ? 'AI View ON' : 'AI Preview'}
+            </button>
+            <button
+              onClick={downloadAuditCSV}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-slate-800/80 text-slate-400 border border-slate-700/50 hover:bg-slate-700 hover:text-slate-200 transition-all"
+              title="Download compliance audit log as CSV"
+            >
+              <Download size={13} />
+              CSV
+            </button>
+          </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {reviewQueue.length === 0 ? (
@@ -490,7 +586,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
               </div>
             ) : (
               <div className="space-y-3 border-b border-slate-800/60 pb-6 mb-4">
-                {reviewQueue.map((span, index) => (
+                {reviewQueue.filter(span => span.confidence >= confidenceThreshold).map((span, index) => (
                   <div id={`queue-item-${span.id}`} key={span.id}>
                     <SpanActionCard
                       span={span}
@@ -502,6 +598,11 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                     />
                   </div>
                 ))}
+                {reviewQueue.filter(span => span.confidence < confidenceThreshold).length > 0 && (
+                  <div className="text-center text-[10px] text-slate-600 py-2 border-t border-slate-800/40 mt-2">
+                    {reviewQueue.filter(span => span.confidence < confidenceThreshold).length} items hidden below {(confidenceThreshold * 100).toFixed(0)}% threshold
+                  </div>
+                )}
               </div>
             )}
 
