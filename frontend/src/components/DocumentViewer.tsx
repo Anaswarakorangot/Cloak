@@ -712,6 +712,11 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                   </span>
                 </div>
                 
+                <div className="bg-slate-950 border border-slate-800 rounded px-2 py-1.5 mb-1 break-all">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mr-2">Original:</span>
+                  <span className="text-sm font-mono text-slate-200">{span.text}</span>
+                </div>
+                
                 <p className="text-xs text-slate-300 leading-relaxed font-sans">
                   {span.reason || 'Detected as potential PII.'}
                 </p>

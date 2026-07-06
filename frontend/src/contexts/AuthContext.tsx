@@ -19,15 +19,15 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('cloak_token'));
 
-  const login = (newToken: string) => {
+  const login = React.useCallback((newToken: string) => {
     localStorage.setItem('cloak_token', newToken);
     setToken(newToken);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     localStorage.removeItem('cloak_token');
     setToken(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, login, logout, isAuthenticated: !!token }}>
