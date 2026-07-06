@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PIISpan } from '@shared/types';
 
 interface Props {
@@ -15,6 +15,23 @@ export function SpanActionCard({ span, instanceCount, onApprove, onStage, onConf
   const isHighRisk = risk > 0.4;
   const isMedRisk = risk > 0.2;
   const isStaged = span.status === 'STAGED_FOR_DISMISSAL';
+
+  // Calibration feedback state — persisted in localStorage
+  const feedbackKey = `cloak_feedback_${span.type}_${span.text}`;
+  const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(() => {
+    const stored = localStorage.getItem(feedbackKey);
+    return stored as 'correct' | 'incorrect' | null;
+  });
+
+  const handleFeedback = (value: 'correct' | 'incorrect') => {
+    const newVal = feedback === value ? null : value;
+    setFeedback(newVal);
+    if (newVal) {
+      localStorage.setItem(feedbackKey, newVal);
+    } else {
+      localStorage.removeItem(feedbackKey);
+    }
+  };
 
   return (
     <div className={`rounded-lg p-3 mb-2 border transition-all duration-300 ${
@@ -43,7 +60,29 @@ export function SpanActionCard({ span, instanceCount, onApprove, onStage, onConf
 
       {/* Text + Reason */}
       <p className="text-xs font-mono text-neutral-300 bg-neutral-800/50 px-2 py-1 rounded mb-1 truncate">"{span.text}"</p>
-      <p className="text-xs text-neutral-500 italic mb-3 leading-tight">{span.reason}</p>
+      <p className="text-xs text-neutral-500 italic mb-2 leading-tight">{span.reason}</p>
+
+      {/* Calibration Feedback */}
+      <div className="flex items-center gap-1.5 mb-3">
+        <span className="text-[10px] text-neutral-600 uppercase tracking-wider font-semibold">Accurate?</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleFeedback('correct'); }}
+          className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${feedback === 'correct' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-neutral-600 hover:text-emerald-400'}`}
+        >
+          👍
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleFeedback('incorrect'); }}
+          className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${feedback === 'incorrect' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'text-neutral-600 hover:text-rose-400'}`}
+        >
+          👎
+        </button>
+        {feedback && (
+          <span className={`text-[9px] ml-1 ${feedback === 'correct' ? 'text-emerald-500' : 'text-rose-400'}`}>
+            {feedback === 'correct' ? 'Confirmed' : 'Flagged as incorrect'}
+          </span>
+        )}
+      </div>
 
       {/* ASYMMETRIC FRICTION BUTTONS — the PS3 core */}
       <div className="flex gap-2">

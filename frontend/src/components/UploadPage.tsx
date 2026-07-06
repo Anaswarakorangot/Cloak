@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { DocumentAnalysisResult } from '@shared/types';
-import { Upload, FileText, Sparkles, Cpu, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Sparkles, Cpu, ChevronRight, AlertCircle, Loader2, Stethoscope } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +14,7 @@ type InputMode = 'upload' | 'paste';
 export function UploadPage({ onAnalysisComplete }: Props) {
   const [detectionMode, setDetectionMode] = useState<DetectionMode>('gemini');
   const [inputMode, setInputMode] = useState<InputMode>('upload');
+  const [documentProfile, setDocumentProfile] = useState<string>('general');
   const [pastedText, setPastedText] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +31,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ text, mode: detectionMode }),
+        body: JSON.stringify({ text, mode: detectionMode, profile: documentProfile }),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -135,6 +136,25 @@ export function UploadPage({ onAnalysisComplete }: Props) {
             <span>Gemini 2.5 Flash will analyze your document for PII with explanations for every decision.</span>
           </div>
         )}
+
+        {/* Document Profile Selector */}
+        <div className="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5">
+          <div className="flex items-center gap-2">
+            <Stethoscope size={14} className="text-indigo-400" />
+            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Document Profile</span>
+          </div>
+          <select
+            value={documentProfile}
+            onChange={(e) => setDocumentProfile(e.target.value)}
+            className="flex-1 bg-slate-800/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all appearance-none cursor-pointer"
+          >
+            <option value="general">🔍 General (Auto-Detect)</option>
+            <option value="medical">🏥 Medical / Healthcare</option>
+            <option value="legal">⚖️ Legal / Contracts</option>
+            <option value="financial">💰 Financial / Banking</option>
+            <option value="hr">👤 HR / Employment</option>
+          </select>
+        </div>
 
         {/* Input Mode Toggle */}
         <div className="flex gap-2">
