@@ -12,3 +12,4 @@ lumora/
 .DS_Store
 *.log
 backend/uploads/
+DEMO_SCRIPT.md
