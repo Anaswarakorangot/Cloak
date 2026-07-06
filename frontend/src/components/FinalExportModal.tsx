@@ -26,7 +26,7 @@ export function FinalExportModal({ isOpen, onClose, spans, documentText, fileNam
   }, [isOpen, dismissedHighRisk]);
 
   const handleDownload = async () => {
-    const res = await fetch(${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/export, {
+    const res = await fetch('http://localhost:8000/api/export', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('cloak_token')}` },
       body: JSON.stringify({ document_text: documentText, spans, file_name: fileName })

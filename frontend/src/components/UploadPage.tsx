@@ -24,7 +24,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/analyze-text, {
+      const response = await fetch('http://localhost:8000/api/analyze-text', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -52,7 +52,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
     formData.append('file', file);
     formData.append('mode', detectionMode);
     try {
-      const response = await fetch(${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/analyze-upload, {
+      const response = await fetch('http://localhost:8000/api/analyze-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -90,7 +90,7 @@ export function UploadPage({ onAnalysisComplete }: Props) {
   };
 
   const handleUseDemoDoc = () => {
-    fetch(${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/analyze, {
+    fetch('http://localhost:8000/api/analyze', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(r => r.json())
