@@ -200,12 +200,14 @@ async def analyze_text(body: dict, current_user: User = Depends(get_current_user
     db_kg = db.query(KnowledgeGraph).filter(KnowledgeGraph.user_id == current_user.id).all()
     kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
 
+    from fastapi.concurrency import run_in_threadpool
+    
     if mode == "gemini":
         from app.services.gemini_detector import analyze_with_gemini
-        result = analyze_with_gemini(text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        result = await run_in_threadpool(analyze_with_gemini, text, custom_rules, kg_data)
     else:
         # Mock mode: run real regex detection on the actual pasted text
-        result = analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        result = await run_in_threadpool(analyze_text_local, text, custom_rules, kg_data)
         
     _populate_knowledge_graph(db, current_user.id, result.spans)
         
@@ -283,12 +285,14 @@ async def analyze_upload(
     kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
 
     # Detect PII
+    from fastapi.concurrency import run_in_threadpool
+
     if mode == "gemini":
         from app.services.gemini_detector import analyze_with_gemini
-        result = analyze_with_gemini(extracted_text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        result = await run_in_threadpool(analyze_with_gemini, extracted_text, custom_rules, kg_data)
     else:
         # Mock mode: run real regex detection on the uploaded file's text
-        result = analyze_text_local(extracted_text, custom_rules=custom_rules, knowledge_graph=kg_data)
+        result = await run_in_threadpool(analyze_text_local, extracted_text, custom_rules, kg_data)
         
     _populate_knowledge_graph(db, current_user.id, result.spans)
         
