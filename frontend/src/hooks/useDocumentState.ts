@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { DocumentAnalysisResult, PIISpan, PIIType, SessionLogEntry } from '@shared/types';
+import { useState, useMemo } from 'react';
+import { DocumentAnalysisResult, PIISpan, PIIType, SessionLogEntry, SpanStatus } from '@shared/types';
 
 export function useDocumentState() {
   const [document, setDocumentState] = useState<DocumentAnalysisResult | null>(null);
@@ -9,6 +9,37 @@ export function useDocumentState() {
   const [detectionMode, setDetectionMode] = useState<'gemini' | 'mock'>('mock');
   const [fileName, setFileName] = useState<string>('');
   const [sessionLog, setSessionLog] = useState<SessionLogEntry[]>([]);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.5);
+
+  const totalExposureScore = useMemo(() =>
+    (document?.spans ?? [])
+      .filter(s => s.status === 'KEPT_VISIBLE' || (!s.suggested_redaction && s.status !== 'REDACTED'))
+      .reduce((sum, s) => sum + (s.risk_score ?? 0), 0),
+    [document]
+  );
+
+  const stageForDismissal = (spanId: string) => {
+    if (!document) return;
+    setDocumentState({
+      ...document,
+      spans: document.spans.map(s =>
+        s.id === spanId ? { ...s, status: 'STAGED_FOR_DISMISSAL' as SpanStatus } : s
+      )
+    });
+  };
+
+  const globalResolve = (text: string, finalStatus: 'REDACTED' | 'KEPT_VISIBLE') => {
+    if (!document) return;
+    addLog('GLOBAL_RESOLVE' as any, `Bulk-applied ${finalStatus} to all "${text}"`, document.spans);
+    setDocumentState({
+      ...document,
+      spans: document.spans.map(s =>
+        s.text === text
+          ? { ...s, status: finalStatus, suggested_redaction: finalStatus === 'REDACTED' }
+          : s
+      )
+    });
+  };
 
   const addLog = (type: SessionLogEntry['type'], action: string, previousSpans: PIISpan[]) => {
     setSessionLog(prev => [{
@@ -43,7 +74,9 @@ export function useDocumentState() {
     addLog('REMOVE', 'Ignored a flagged span', document.spans);
     setDocumentState({
       ...document,
-      spans: document.spans.filter(s => s.id !== spanId)
+      spans: document.spans.map(s => 
+        s.id === spanId ? { ...s, status: 'KEPT_VISIBLE' as SpanStatus, suggested_redaction: false } : s
+      )
     });
   };
 
@@ -99,7 +132,7 @@ export function useDocumentState() {
     setDocumentState({
       ...document,
       spans: document.spans.map(s =>
-        s.id === spanId ? { ...s, suggested_redaction: true, confidence: 1.0, reason: 'Manually confirmed by user.' } : s
+        s.id === spanId ? { ...s, status: 'REDACTED' as SpanStatus, suggested_redaction: true, confidence: 1.0, reason: 'Manually confirmed by user.' } : s
       )
     });
   };
@@ -119,6 +152,11 @@ export function useDocumentState() {
     fileName,
     startTime,
     sessionLog,
-    undoLastAction
+    undoLastAction,
+    stageForDismissal,
+    globalResolve,
+    confidenceThreshold,
+    setConfidenceThreshold,
+    totalExposureScore,
   };
 }

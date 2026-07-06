@@ -2,6 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { RedactionBadge } from './RedactionBadge';
 import { ControlPanel } from './ControlPanel';
+import { EntityNode } from './EntityNode';
+import { SpanActionCard } from './SpanActionCard';
 import { PIIType, DocumentAnalysisResult } from '@shared/types';
 import { cn } from '../lib/utils';
 import * as Popover from '@radix-ui/react-popover';
@@ -30,11 +32,33 @@ interface DocumentViewerProps {
     setDocument: (doc: DocumentAnalysisResult | null, mode: 'gemini' | 'mock', name: string) => void;
     sessionLog?: any[];
     undoLastAction?: () => void;
+    totalExposureScore: number;
+    stageForDismissal: (spanId: string) => void;
+    globalResolve: (text: string, action: 'REDACT' | 'KEEP') => void;
   };
 }
 
 export function DocumentViewer({ documentState }: DocumentViewerProps) {
-  const { document, loading, reviewMode, toggleReviewMode, removeRedaction, addRedaction, confirmRedaction, startTime, fileName, sessionLog = [], undoLastAction } = documentState;
+  const { 
+    document, loading, reviewMode, removeRedaction, addRedaction, confirmRedaction, 
+    toggleReviewMode, fileName, startTime, sessionLog = [], undoLastAction,
+    totalExposureScore, stageForDismissal, globalResolve
+  } = documentState;
+
+  const reviewQueue = React.useMemo(() =>
+    [...(document?.spans ?? [])].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)),
+  [document?.spans]);
+
+  const instanceCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    document?.spans.forEach(s => { counts[s.text] = (counts[s.text] ?? 0) + 1; });
+    return counts;
+  }, [document?.spans]);
+
+  const pendingSpans = document?.spans
+    .filter(s => s.status !== 'REDACTED' && s.status !== 'KEPT_VISIBLE')
+    .sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)) || [];
+
   const textRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
@@ -93,15 +117,6 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   if (!document) {
     return <div className="p-8 text-center text-red-500">Failed to load document.</div>;
   }
-
-  const pendingSpans = document.spans
-    .filter(s => !s.suggested_redaction)
-    .sort((a, b) => {
-       const getSeverity = (t: string) => ['SSN', 'PHONE', 'EMAIL'].includes(t) ? 3 : 1;
-       const riskA = (1 - a.confidence) * getSeverity(a.type);
-       const riskB = (1 - b.confidence) * getSeverity(b.type);
-       return riskB - riskA;
-    });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -165,11 +180,9 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
       let exactStart = dataIndexStr ? parseInt(dataIndexStr, 10) : -1;
       
       if (exactStart !== -1 && node.nodeType === Node.TEXT_NODE) {
-        // startOffset is the character offset within the text node
         exactStart += range.startOffset;
       }
       
-      // Verify text matches exactly at exactStart to handle multiple identical strings
       if (exactStart !== -1 && document.text.substring(exactStart, exactStart + text.length) === text) {
         setTooltip({
           x: rect.left + (rect.width / 2),
@@ -179,7 +192,6 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           end: exactStart + text.length
         });
       } else {
-        // Fallback to indexOf if something went wrong
         const start = document.text.indexOf(text, Math.max(0, exactStart - 5)); 
         if (start !== -1) {
           setTooltip({
@@ -214,125 +226,33 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     [document?.spans]
   );
 
-  const handleAddRedaction = (type: PIIType) => {
-    if (tooltip) {
-      addRedaction(tooltip.start, tooltip.end, tooltip.text, type);
-      setTooltip(null);
-      window.getSelection()?.removeAllRanges();
+  const handleSpanClick = (span: any) => {
+    const index = reviewQueue.findIndex(s => s.id === span.id);
+    if (index !== -1) setFocusedSpanIndex(index);
+    const el = window.document.getElementById(`queue-item-${span.id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-amber-400');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 1500);
     }
   };
 
   const renderText = () => {
     let lastIndex = 0;
     const elements: React.ReactNode[] = [];
-    
-    const clusters = new Map<string, number>();
-    const typeCounters = new Map<PIIType, number>();
-
-    document.spans.forEach(span => {
-      if (span.suggested_redaction) {
-        const key = `${span.type}-${span.text.toLowerCase()}`;
-        if (!clusters.has(key)) {
-          const count = (typeCounters.get(span.type) || 0) + 1;
-          typeCounters.set(span.type, count);
-          clusters.set(key, count);
-        }
-      }
-    });
 
     document.spans.forEach((span, i) => {
       if (span.start > lastIndex) {
         elements.push(<span key={`text-${lastIndex}`} data-index={lastIndex}>{document.text.slice(lastIndex, span.start)}</span>);
       }
 
-      const isUncertain = reviewMode && !span.suggested_redaction && span.confidence < 0.7;
-      
-      if (span.suggested_redaction) {
-        elements.push(
-          <RedactionBadge 
-            key={`span-${span.id}`} 
-            span={span} 
-            reviewMode={reviewMode} 
-            onRemove={removeRedaction}
-            detectionMode={documentState.detectionMode}
-            clusterId={clusters.get(`${span.type}-${span.text.toLowerCase()}`)}
-          />
-        );
-      } else if (isUncertain) {
-        // We need controlled open state to close before triggering state update
-        const UncertainSpan = () => {
-          const [open, setOpen] = React.useState(false);
-          return (
-            <Popover.Root open={open} onOpenChange={setOpen}>
-              <Popover.Trigger asChild>
-                <span
-                  id={`span-${span.id}`}
-                  className="transition-all duration-300 bg-amber-500/10 border-b border-amber-500/50 text-amber-200 px-0.5 mx-0.5 rounded-sm shadow-[0_0_10px_rgba(245,158,11,0.1)] cursor-pointer hover:bg-amber-500/20"
-                >
-                  {span.text}
-                </span>
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Content
-                  className="z-50 w-72 rounded-xl bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 shadow-2xl p-4 ring-1 ring-white/10"
-                  sideOffset={5}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Info size={16} className="text-amber-400" />
-                      <h4 className="font-semibold text-slate-100 text-sm">
-                        {documentState.detectionMode === 'gemini' ? 'AI Decision' : 'Detection Engine'}
-                      </h4>
-                      {span.reason && (
-                        <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold tracking-wide uppercase shadow-[0_0_10px_rgba(245,158,11,0.1)]">
-                          {documentState.detectionMode === 'gemini' ? (
-                            <><span className="text-amber-400">✨</span> AI Flagged</>
-                          ) : (
-                            <><span className="text-amber-400">🛡️</span> Local Flagged</>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="px-2 py-0.5 rounded-md text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/20">
-                      {Math.round(span.confidence * 100)}% Confidence
-                    </div>
-                  </div>
-                  <p className="text-slate-300 text-sm mb-4 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                    {span.reason || 'Ambiguous context. Left visible to avoid over-redacting, but flagged for your review.'}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setOpen(false)}
-                      className="flex-1 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/30 transition-colors flex items-center justify-center gap-1"
-                    >
-                      <CheckCircle2 size={14} /> Safe
-                    </button>
-                    <button
-                      onClick={() => {
-                        setOpen(false);
-                        // Defer state update until after popover animation completes
-                        setTimeout(() => confirmRedaction(span.id), 100);
-                      }}
-                      className="flex-1 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded-lg border border-rose-500/30 transition-colors flex items-center justify-center gap-1"
-                    >
-                      <ShieldAlert size={14} /> Redact
-                    </button>
-                  </div>
-                  <Popover.Arrow className="fill-slate-800/80" />
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
-          );
-        };
-        elements.push(<UncertainSpan key={`span-${span.id}`} />);
-
-      } else {
-        elements.push(
-          <span key={`span-${span.id}`}>
-            {span.text}
-          </span>
-        );
-      }
+      elements.push(
+        <EntityNode 
+          key={`span-${span.id}`} 
+          span={span} 
+          onClick={handleSpanClick}
+        />
+      );
       
       lastIndex = span.end;
     });
@@ -421,6 +341,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           startTime={startTime}
           fileName={fileName}
           onAddRedaction={addRedaction}
+          totalExposureScore={totalExposureScore}
         />
 
         {document?.classification && (
@@ -452,11 +373,11 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         )}
         
         {reviewMode ? (
-          <div className="flex w-full h-[70vh] overflow-hidden bg-[#1e1e1e]">
+          <div className="flex-1 flex w-full overflow-hidden bg-[#1e1e1e]">
             {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
               <div 
                 ref={textRef}
-                className="w-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto max-h-[70vh]"
+                className="w-full h-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto"
                 onMouseUp={handleSelection}
               >
                 {renderText()}
@@ -466,7 +387,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             )}
           </div>
         ) : (
-          <div className="flex w-full overflow-hidden h-[70vh]">
+          <div className="flex-1 flex w-full overflow-hidden">
             {fileName.toLowerCase().endsWith('.pdf') && document.document_id ? (
               <div className="w-full bg-[#1e1e1e] flex flex-col">{renderPdfViewer(true)}</div>
             ) : (
@@ -510,53 +431,23 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {pendingSpans.length === 0 ? (
+            {reviewQueue.length === 0 ? (
               <div className="text-center p-6 text-slate-500 text-sm border-b border-slate-800/60 pb-8 mb-4">
                 <CheckCircle2 size={32} className="mx-auto mb-2 opacity-50" />
-                All clear! No uncertain items pending review.
+                All clear! No items pending review.
               </div>
             ) : (
               <div className="space-y-3 border-b border-slate-800/60 pb-6 mb-4">
-                {pendingSpans.map((span, index) => (
-                  <div 
-                    id={`queue-item-${span.id}`}
-                    key={span.id} 
-                    className={`p-3 rounded-lg hover:border-amber-500/40 transition-all cursor-pointer group hover:bg-slate-800/80 ${
-                      index === focusedSpanIndex ? 'bg-slate-800 border border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'bg-slate-800/50 border border-amber-500/20'
-                    }`}
-                    onClick={() => {
-                      setFocusedSpanIndex(index);
-                      const el = window.document.getElementById(`span-${span.id}`);
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        // Brief highlight animation
-                        el.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2', 'ring-offset-slate-900');
-                        setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2', 'ring-offset-slate-900'), 1500);
-                      }
-                    }}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/20">
-                        {span.type} • {Math.round(span.confidence * 100)}%
-                      </span>
-                    </div>
-                    <p className="text-slate-200 font-medium text-sm mb-3 bg-slate-900/50 p-2 rounded">
-                      "{span.text}"
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); confirmRedaction(span.id); }}
-                        className="flex-1 px-2 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-bold rounded border border-rose-500/30 transition-colors"
-                      >
-                        Redact
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeRedaction(span.id); }}
-                        className="flex-1 px-2 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded border border-emerald-500/30 transition-colors"
-                      >
-                        Ignore
-                      </button>
-                    </div>
+                {reviewQueue.map((span, index) => (
+                  <div id={`queue-item-${span.id}`} key={span.id}>
+                    <SpanActionCard
+                      span={span}
+                      instanceCount={instanceCounts[span.text] || 1}
+                      onApprove={(id) => confirmRedaction(id)}
+                      onStage={(id) => stageForDismissal(id)}
+                      onConfirm={(id) => removeRedaction(id)}
+                      onGlobalApply={globalResolve}
+                    />
                   </div>
                 ))}
               </div>

@@ -9,6 +9,13 @@ export enum PIIType {
   CUSTOM = 'CUSTOM',
 }
 
+export type SpanStatus = 'REDACTED' | 'KEPT_VISIBLE' | 'STAGED_FOR_DISMISSAL';
+
+export interface ModelConsensus {
+  model: string;
+  agreed: boolean;
+}
+
 export interface PIISpan {
   id: string;
   start: number;
@@ -18,13 +25,17 @@ export interface PIISpan {
   confidence: number;
   suggested_redaction: boolean;
   reason?: string; // Explanation from Gemini AI
+  status?: SpanStatus;
+  risk_score?: number;
+  model_agreement?: ModelConsensus[];
 }
 
 export interface DocumentAnalysisResult {
-  document_id?: number;
+  document_id?: string;
   text: string;
   spans: PIISpan[];
   classification?: 'LEGAL' | 'MEDICAL' | 'FINANCIAL' | 'GENERAL';
+  total_exposure_score?: number;
 }
 
 export interface SessionLogEntry {

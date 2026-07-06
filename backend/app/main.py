@@ -10,6 +10,7 @@ from app.models.pii_schemas import DocumentAnalysisResult
 from app.services.pii_detector import analyze_document_mock, analyze_text_local
 from app.routers.auth import router as auth_router
 from app.routers.rules import router as rules_router
+from app.routers.export import router as export_router
 from app.database import engine, Base, get_db
 from sqlalchemy.orm import Session
 from app.services.security import get_current_user
@@ -28,6 +29,7 @@ def on_startup():
 
 app.include_router(auth_router)
 app.include_router(rules_router)
+app.include_router(export_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -129,7 +131,7 @@ def _populate_knowledge_graph(db: Session, user_id: str, spans: list):
 @app.get("/api/analyze", response_model=DocumentAnalysisResult)
 def analyze_document_default(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Returns the default mock document analysis using the real local detector."""
-    from app.services.pii_detector import MOCK_DOCUMENT_TEXT, analyze_text_local
+    from app.services.pii_detector import MOCK_DOCUMENT_TEXT, analyze_document_mock
     
     from app.models.db_models import CustomRule, KnowledgeGraph
     db_rules = db.query(CustomRule).filter(CustomRule.user_id == current_user.id, CustomRule.is_active == "true").all()
@@ -138,7 +140,7 @@ def analyze_document_default(current_user: User = Depends(get_current_user), db:
     db_kg = db.query(KnowledgeGraph).filter(KnowledgeGraph.user_id == current_user.id).all()
     kg_data = [{"related_value": k.related_entity_value, "related_type": k.related_entity_type, "primary_value": k.primary_entity_value} for k in db_kg]
     
-    result = analyze_text_local(MOCK_DOCUMENT_TEXT, custom_rules=custom_rules, knowledge_graph=kg_data)
+    result = analyze_document_mock()
     
     _populate_knowledge_graph(db, current_user.id, result.spans)
     

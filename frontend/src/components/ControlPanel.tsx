@@ -5,6 +5,8 @@ import { ShieldCheck, ShieldAlert, Eye, Layout, Loader2, CheckCircle2 } from 'lu
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
+import { ExposureMeter } from './ExposureMeter';
+import { FinalExportModal } from './FinalExportModal';
 
 interface Props {
   document: DocumentAnalysisResult | null;
@@ -14,9 +16,10 @@ interface Props {
   startTime: number;
   fileName?: string;
   onAddRedaction?: (start: number, end: number, text: string, type: any) => void;
+  totalExposureScore?: number;
 }
 
-export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTime, fileName = 'document', onAddRedaction }: Props) {
+export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTime, fileName = 'document', onAddRedaction, totalExposureScore = 0 }: Props) {
   const [showSpeedBump, setShowSpeedBump] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [manualText, setManualText] = useState('');
@@ -25,6 +28,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
   const [exported, setExported] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const { token } = useAuth();
 
   const lowConfidenceUnreviewed = document?.spans.filter(s => s.confidence < 0.7 && !s.suggested_redaction).length || 0;
@@ -275,17 +279,14 @@ by the Cloak platform. All structured data was secured locally.
           </div>
         )}
       </div>
+      
+      <div className="flex items-center gap-4">
+        <ExposureMeter score={totalExposureScore} />
+      </div>
 
       <div className="relative">
         <button 
-          onClick={() => {
-            const timeOpen = Date.now() - startTime;
-            if (lowConfidenceUnreviewed > 0 || timeOpen < 5000) {
-              setShowSpeedBump(true);
-            } else {
-              setIsExporting(true);
-            }
-          }}
+          onClick={() => setShowExportModal(true)}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-bold text-sm transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-70"
         >
           <ShieldCheck size={18} />
@@ -381,109 +382,14 @@ by the Cloak platform. All structured data was secured locally.
           window.document.body
         )}
 
-        {showSpeedBump && createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
-              <h4 className="font-bold text-slate-100 mb-3 flex items-center gap-2 text-lg">
-                <ShieldAlert className="text-amber-500" size={20} /> Wait, are you sure?
-              </h4>
-              <p className="text-sm text-slate-300 mb-8 leading-relaxed">
-                {lowConfidenceUnreviewed > 0 
-                  ? `You have ${lowConfidenceUnreviewed} highlighted areas you haven't reviewed yet. Automation bias is real—take a second look.` 
-                  : "You reviewed that very quickly. Did you double check for missed PII?"}
-              </p>
-              <div className="flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setShowSpeedBump(false)}
-                  className="px-4 py-2 text-sm font-bold text-slate-300 bg-white/10 hover:bg-white/20 shadow-sm border border-white/5 rounded-lg transition-colors"
-                >
-                  Keep Reviewing
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setShowSpeedBump(false);
-                    setIsExporting(true);
-                  }}
-                  className="px-4 py-2 text-sm font-bold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-200 rounded-lg transition-colors border border-rose-500/20 hover:border-rose-500/40"
-                >
-                  Export Anyway
-                </button>
-              </div>
-            </div>
-          </div>,
-          window.document.body
-        )}
-
-        {isExporting && !showSpeedBump && createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-96 bg-[#0a0a0a]/95 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10 p-8 ring-1 ring-white/5 animate-in zoom-in-95 duration-200">
-              <h4 className="font-bold text-slate-100 mb-6 text-xl">Export Document</h4>
-              
-              <div className="space-y-5 mb-8">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Filename</label>
-                  <div className="flex bg-white/[0.03] border border-white/10 rounded-lg shadow-inner overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500">
-                    <input 
-                      type="text" 
-                      value={exportName}
-                      onChange={e => setExportName(e.target.value)}
-                      className="flex-1 bg-transparent px-4 py-3 text-sm text-white focus:outline-none"
-                    />
-                    <div className="px-4 py-3 bg-white/5 border-l border-white/10 text-slate-400 font-medium text-sm flex items-center">
-                      .{exportFormat}
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Format</label>
-                  <div className="flex bg-white/[0.03] p-1.5 rounded-lg border border-white/10 shadow-inner">
-                    <button 
-                      type="button"
-                      onClick={() => setExportFormat('txt')}
-                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'txt' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                    >
-                      .TXT
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setExportFormat('doc')}
-                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'doc' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                    >
-                      .DOC
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setExportFormat('pdf')}
-                      className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${exportFormat === 'pdf' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
-                    >
-                      {fileName.toLowerCase().match(/\.(png|jpg|jpeg)$/) ? 'ORIGINAL' : '.PDF'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsExporting(false)}
-                  className="px-5 py-2.5 text-sm font-bold text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button"
-                  onClick={doExport}
-                  className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 shadow-lg shadow-indigo-500/20 border border-white/10 rounded-lg transition-colors"
-                >
-                  Download
-                </button>
-              </div>
-            </div>
-          </div>,
-          window.document.body
+        {showExportModal && (
+          <FinalExportModal 
+            isOpen={showExportModal} 
+            onClose={() => setShowExportModal(false)}
+            spans={document?.spans ?? []}
+            documentText={document?.text ?? ''}
+            fileName={fileName}
+          />
         )}
 
         {showSummary && createPortal(

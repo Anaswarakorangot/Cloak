@@ -1,0 +1,38 @@
+import React from 'react';
+import { PIISpan } from '@shared/types';
+
+interface Props {
+  span: PIISpan;
+  onClick: (span: PIISpan) => void;
+}
+
+export function EntityNode({ span, onClick }: Props) {
+  const status = span.status ?? (span.suggested_redaction ? 'REDACTED' : 'KEPT_VISIBLE');
+  const risk = span.risk_score ?? 0;
+
+  let cls = 'cursor-pointer rounded-sm mx-0.5 px-0.5 transition-all duration-200 inline ';
+
+  if (status === 'REDACTED') {
+    // STATE 1: Confirmed black bar — no visual noise, Sam can scan past it
+    cls += 'bg-neutral-900 text-neutral-500 text-xs font-mono border border-neutral-800';
+  } else if (status === 'STAGED_FOR_DISMISSAL') {
+    // STATE 2: Halfway through 2-step — orange pulse, waiting for confirm
+    cls += 'bg-orange-900/30 text-orange-300 border-b-2 border-orange-500 animate-pulse';
+  } else if (risk > 0.4) {
+    // STATE 3: High-risk miss (phone at 38%, name at 45%) — red pulse, DEMANDS attention
+    cls += 'border-b-2 border-dotted border-red-500 text-red-300 animate-pulse';
+  } else if (risk > 0.2) {
+    // STATE 4: Borderline miss — amber underline, worth a look
+    cls += 'border-b-2 border-dotted border-amber-400 text-amber-200';
+  } else {
+    // STATE 5: AI scanned + deliberately kept visible (e.g., "Houston" the city)
+    // Dotted blue = "I checked this, it is fine" — Silence is not trust.
+    cls += 'border-b border-dotted border-blue-500/60 text-blue-200/80';
+  }
+
+  return (
+    <span className={cls} onClick={() => onClick(span)} title={span.reason ?? ''}>
+      {status === 'REDACTED' ? `[${span.type}]` : span.text}
+    </span>
+  );
+}

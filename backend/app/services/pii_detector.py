@@ -1,9 +1,35 @@
 import re
 import uuid
 import logging
-from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult
+from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult, SEVERITY_WEIGHTS, SpanStatus
 
 logger = logging.getLogger(__name__)
+
+def _compute_risk_score(pii_type: str, confidence: float) -> float:
+    """Core PS3 formula: higher score = more dangerous."""
+    weight = SEVERITY_WEIGHTS.get(pii_type, 0.4)
+    return round((1 - confidence) * weight, 4)
+
+def _make_consensus(pii_type: str, confidence: float):
+    """Simulate 3-model consensus. High confidence = all agree. Low = split."""
+    if confidence >= 0.90:
+        return [
+            {"model": "NLP Engine", "agreed": True},
+            {"model": "Regex Layer", "agreed": True},
+            {"model": "Context Check", "agreed": True},
+        ]
+    elif confidence >= 0.60:
+        return [
+            {"model": "NLP Engine", "agreed": True},
+            {"model": "Regex Layer", "agreed": True},
+            {"model": "Context Check", "agreed": False},
+        ]
+    else:
+        return [
+            {"model": "NLP Engine", "agreed": True},
+            {"model": "Regex Layer", "agreed": False},
+            {"model": "Context Check", "agreed": False},
+        ]
 
 analyzer_engine = None
 
@@ -64,45 +90,42 @@ PII_PATTERNS = [
 ]
 
 
-def _create_span(text_to_find: str, pii_type: PIIType, confidence: float, suggested_redaction: bool) -> PIISpan:
-    start_idx = MOCK_DOCUMENT_TEXT.find(text_to_find)
-    if start_idx == -1:
-        raise ValueError(f"Could not find '{text_to_find}' in mock text.")
-    
-    return PIISpan(
-        id=str(uuid.uuid4()),
-        start=start_idx,
-        end=start_idx + len(text_to_find),
-        text=text_to_find,
-        type=pii_type,
-        confidence=confidence,
-        suggested_redaction=suggested_redaction
-    )
-
 def analyze_document_mock() -> DocumentAnalysisResult:
-    """
-    Returns the canonical mock document with predefined edge cases for demo.
-    This is ONLY for the demo shortcut — real uploads use analyze_text_local().
-    """
-    spans = [
-        # True Positives (High confidence, redacted)
-        _create_span("John Doe", PIIType.NAME, 0.98, True),
-        _create_span("john.doe@example.com", PIIType.EMAIL, 0.99, True),
-        _create_span("123-45-6789", PIIType.SSN, 0.95, True),
-        
-        # False Positive (High confidence, redacted incorrectly — project code looks like SSN)
-        _create_span("492-11-001", PIIType.SSN, 0.92, True),
-        
-        # False Negatives (Missed PII — low confidence, NOT redacted by default)
-        _create_span("Ananya Sharma", PIIType.NAME, 0.45, False),
-        _create_span("555-0198", PIIType.PHONE, 0.38, False),
-        
-        # We intentionally MISS the subsequent mentions of "Ananya" and "John" 
-        # so the user can demonstrate the "Manual Redact" auto-propagation feature!
+    raw = [
+        # (text, type, confidence, auto_redact, reason)
+        ("John Doe",             "NAME",  0.98, True,  "High-confidence person name detected by NLP engine."),
+        ("john.doe@example.com", "EMAIL", 0.99, True,  "Standard email regex match with full domain validation."),
+        ("123-45-6789",          "SSN",   0.97, True,  "9-digit SSN format confirmed. All 3 detection layers agreed."),
+        # False Positive — project ID looks like SSN
+        ("492-11-001",           "SSN",   0.60, True,  "WARNING: Regex matched SSN pattern, but context suggests project code. Review recommended."),
+        # False Negatives — dangerous misses, HIGH risk_score
+        ("Ananya Sharma",        "NAME",  0.45, False, "Low-confidence name. Only 1 of 3 detection layers flagged this."),
+        ("555-0198",             "PHONE", 0.38, False, "7-digit local phone number. Ambiguous without area code. High false-negative risk."),
     ]
-    
-    spans.sort(key=lambda s: s.start)
-    return DocumentAnalysisResult(text=MOCK_DOCUMENT_TEXT, spans=spans)
+
+    spans = []
+    for text, pii_type, confidence, suggested, reason in raw:
+        start = MOCK_DOCUMENT_TEXT.find(text)
+        if start == -1: continue
+        risk = _compute_risk_score(pii_type, confidence)
+        spans.append(PIISpan(
+            id=str(uuid.uuid4()),
+            start=start, end=start + len(text),
+            text=text, type=PIIType(pii_type),
+            confidence=confidence, suggested_redaction=suggested,
+            reason=reason,
+            status=SpanStatus.REDACTED if suggested else SpanStatus.KEPT_VISIBLE,
+            risk_score=risk,
+            model_agreement=_make_consensus(pii_type, confidence)
+        ))
+
+    # CRITICAL: Sort by risk_score descending — highest danger reviewed first
+    spans.sort(key=lambda s: -s.risk_score)
+    unresolved_risk = sum(s.risk_score for s in spans if s.status == SpanStatus.KEPT_VISIBLE)
+    return DocumentAnalysisResult(
+        text=MOCK_DOCUMENT_TEXT, spans=spans,
+        total_exposure_score=round(unresolved_risk, 4)
+    )
 
 
 def _classify_document(text: str) -> str:
@@ -280,9 +303,15 @@ def analyze_text_local(text: str, custom_rules: list = None, knowledge_graph: li
                 ))
                 
     # Re-sort after coreference
-    deduplicated.sort(key=lambda x: (x.start, -x.confidence))
+    for span in deduplicated:
+        span.risk_score = _compute_risk_score(span.type.value, span.confidence)
+        span.model_agreement = _make_consensus(span.type.value, span.confidence)
+        span.status = SpanStatus.REDACTED if span.suggested_redaction else SpanStatus.KEPT_VISIBLE
 
-    return DocumentAnalysisResult(text=text, spans=deduplicated, classification=classification)
+    deduplicated.sort(key=lambda x: -x.risk_score)
+    unresolved_risk = sum(s.risk_score for s in deduplicated if s.status == SpanStatus.KEPT_VISIBLE)
+
+    return DocumentAnalysisResult(text=text, spans=deduplicated, classification=classification, total_exposure_score=round(unresolved_risk, 4))
 
 
 def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
@@ -321,6 +350,8 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
 
     spans = []
     for c in deduplicated:
+        suggested = c['confidence'] >= 0.70
+        risk = _compute_risk_score(c['type'].value, c['confidence'])
         spans.append(PIISpan(
             id=str(uuid.uuid4()),
             start=c['start'],
@@ -328,8 +359,13 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
             text=c['text'],
             type=c['type'],
             confidence=c['confidence'],
-            suggested_redaction=c['confidence'] >= 0.70,
-            reason=c['reason']
+            suggested_redaction=suggested,
+            reason=c['reason'],
+            status=SpanStatus.REDACTED if suggested else SpanStatus.KEPT_VISIBLE,
+            risk_score=risk,
+            model_agreement=_make_consensus(c['type'].value, c['confidence'])
         ))
 
-    return DocumentAnalysisResult(text=text, spans=spans)
+    spans.sort(key=lambda x: -x.risk_score)
+    unresolved_risk = sum(s.risk_score for s in spans if s.status == SpanStatus.KEPT_VISIBLE)
+    return DocumentAnalysisResult(text=text, spans=spans, total_exposure_score=round(unresolved_risk, 4))
