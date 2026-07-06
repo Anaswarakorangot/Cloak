@@ -171,9 +171,9 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
                 existing = deduplicated[-1]
                 
                 # Merge models
-                merged_models = {m.model: m for m in (existing.model_agreement or [])}
+                merged_models = {m["model"]: m for m in (existing.model_agreement or [])}
                 for m in (span.model_agreement or []):
-                    merged_models[m.model] = m
+                    merged_models[m["model"]] = m
                     
                 if span.confidence > existing.confidence:
                     span.model_agreement = list(merged_models.values())
