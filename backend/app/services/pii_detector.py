@@ -336,8 +336,7 @@ def analyze_text_local(text: str, custom_rules: list = None, knowledge_graph: li
         span.risk_score = _compute_risk_score(span.type.value, span.confidence)
         span.model_agreement = _make_consensus(span.type.value, span.confidence)
         span.status = SpanStatus.REDACTED if span.suggested_redaction else SpanStatus.PENDING
-
-    deduplicated.sort(key=lambda x: -x.risk_score)
+    deduplicated.sort(key=lambda x: (x.start, -x.confidence))
     unresolved_risk = sum(s.risk_score for s in deduplicated if s.status == SpanStatus.PENDING and s.suggested_redaction == False)
 
     return DocumentAnalysisResult(text=text, spans=deduplicated, classification=classification, total_exposure_score=round(unresolved_risk, 4))
