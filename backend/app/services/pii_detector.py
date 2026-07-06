@@ -37,9 +37,8 @@ analyzer_engine = None
 def get_analyzer_engine():
     global analyzer_engine
     if analyzer_engine is None:
-        # Prevent OOM kills on Render Free Tier (512MB RAM)
-        if os.getenv("RENDER") == "true" or os.getenv("DISABLE_PRESIDIO") == "true":
-            logger.warning("Running on Render or PRESIDIO disabled via env. Bypassing Spacy NLP to prevent OOM. Falling back to Regex + Gemini.")
+        if os.getenv("DISABLE_PRESIDIO") == "true":
+            logger.warning("PRESIDIO disabled via env. Bypassing Spacy NLP. Falling back to Regex.")
             return None
             
         try:
