@@ -16,7 +16,8 @@ class PIIType(str, Enum):
 class SpanStatus(str, Enum):
     REDACTED = "REDACTED"
     KEPT_VISIBLE = "KEPT_VISIBLE"
-    STAGED_FOR_DISMISSAL = "STAGED_FOR_DISMISSAL"  # First step of 2-step friction
+    STAGED_FOR_DISMISSAL = "STAGED_FOR_DISMISSAL"
+    PENDING = "PENDING"  # First step of 2-step friction
 
 # The severity weight table — drives the risk score formula
 SEVERITY_WEIGHTS: Dict[str, float] = {

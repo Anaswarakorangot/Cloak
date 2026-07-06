@@ -9,7 +9,7 @@ export enum PIIType {
   CUSTOM = 'CUSTOM',
 }
 
-export type SpanStatus = 'REDACTED' | 'KEPT_VISIBLE' | 'STAGED_FOR_DISMISSAL';
+export type SpanStatus = 'REDACTED' | 'KEPT_VISIBLE' | 'STAGED_FOR_DISMISSAL' | 'PENDING';
 
 export interface ModelConsensus {
   model: string;

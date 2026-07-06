@@ -13,7 +13,7 @@ export function useDocumentState() {
 
   const totalExposureScore = useMemo(() =>
     (document?.spans ?? [])
-      .filter(s => s.status === 'KEPT_VISIBLE' || (!s.suggested_redaction && s.status !== 'REDACTED'))
+      .filter(s => s.status !== 'REDACTED')
       .reduce((sum, s) => sum + (s.risk_score ?? 0), 0),
     [document]
   );

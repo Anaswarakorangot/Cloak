@@ -46,7 +46,9 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   } = documentState;
 
   const reviewQueue = React.useMemo(() =>
-    [...(document?.spans ?? [])].sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)),
+    [...(document?.spans ?? [])]
+      .filter(s => s.status === 'PENDING' || s.status === 'STAGED_FOR_DISMISSAL')
+      .sort((a, b) => (b.risk_score ?? 0) - (a.risk_score ?? 0)),
   [document?.spans]);
 
   const instanceCounts = React.useMemo(() => {
@@ -377,7 +379,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
               <div 
                 ref={textRef}
-                className="w-full h-full p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto"
+                className="flex-1 w-full min-h-0 p-8 text-slate-300 leading-[2.5] text-[17px] whitespace-pre-wrap font-sans selection:bg-orange-500/30 selection:text-orange-200 overflow-y-auto"
                 onMouseUp={handleSelection}
               >
                 {renderText()}
@@ -392,7 +394,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
               <div className="w-full bg-[#1e1e1e] flex flex-col">{renderPdfViewer(true)}</div>
             ) : (
               <>
-                <div className="flex-1 p-8 border-r border-slate-700/50 overflow-y-auto bg-slate-950/40">
+                <div className="flex-1 min-h-0 p-8 border-r border-slate-700/50 overflow-y-auto bg-slate-950/40">
                   <h3 className="text-slate-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-950/90 py-2 backdrop-blur-sm z-10">
                     <span className="w-2 h-2 rounded-full bg-slate-500"></span> Original Text
                   </h3>
@@ -400,7 +402,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                     {document.text}
                   </div>
                 </div>
-                <div className="flex-1 p-8 overflow-y-auto bg-slate-900/40 shadow-inner">
+                <div className="flex-1 min-h-0 p-8 overflow-y-auto bg-slate-900/40 shadow-inner">
                   <h3 className="text-emerald-400 mb-6 font-bold uppercase tracking-wider text-xs flex items-center gap-2 sticky top-0 bg-slate-900/90 py-2 backdrop-blur-sm z-10">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Redacted Safe Export
                   </h3>

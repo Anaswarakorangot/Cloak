@@ -18,6 +18,9 @@ export function EntityNode({ span, onClick }: Props) {
   } else if (status === 'STAGED_FOR_DISMISSAL') {
     // STATE 2: Halfway through 2-step — orange pulse, waiting for confirm
     cls += 'bg-orange-900/30 text-orange-300 border-b-2 border-orange-500 animate-pulse';
+  } else if (status === 'PENDING' && span.suggested_redaction) {
+    // STATE 2.5: AI suggested, waiting for user approval — purple highlight
+    cls += 'bg-purple-900/30 text-purple-200 border-b-2 border-purple-500';
   } else if (risk > 0.4) {
     // STATE 3: High-risk miss (phone at 38%, name at 45%) — red pulse, DEMANDS attention
     cls += 'border-b-2 border-dotted border-red-500 text-red-300 animate-pulse';
