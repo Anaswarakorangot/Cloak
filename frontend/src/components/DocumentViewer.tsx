@@ -73,7 +73,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     if (fileName.toLowerCase().endsWith('.pdf') && document?.document_id) {
       const fetchPdf = async () => {
         try {
-          const res = await fetch(`http://localhost:8000/api/documents/${document.document_id}/pdf`, {
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents/${document.document_id}/pdf`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('cloak_token')}` }
           });
           if (res.ok) {

@@ -22,7 +22,7 @@ export function RulesPage() {
   }, [token]);
 
   const fetchRules = () => {
-    fetch('http://localhost:8000/api/rules', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/rules`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(r => r.json())
@@ -34,7 +34,7 @@ export function RulesPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch('http://localhost:8000/api/rules', {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/rules`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ export function RulesPage() {
 
   const toggleRule = async (id: string) => {
     try {
-      await fetch(`http://localhost:8000/api/rules/${id}/toggle`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/rules/${id}/toggle`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -65,7 +65,7 @@ export function RulesPage() {
 
   const deleteRule = async (id: string) => {
     try {
-      await fetch(`http://localhost:8000/api/rules/${id}`, {
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/rules/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

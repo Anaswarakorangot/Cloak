@@ -20,14 +20,14 @@ export function Dashboard({ onAnalysisComplete }: { onAnalysisComplete: any }) {
   const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/stats', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/stats`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(r => r.json())
     .then(data => setStats(data))
     .catch(console.error);
 
-    fetch('http://localhost:8000/api/documents', {
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/documents`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(r => r.json())
