@@ -72,7 +72,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
 
       if ((isPdf || isImg) && document?.document_id) {
         try {
-          const endpoint = isImg ? 'http://localhost:8000/api/export-image' : 'http://localhost:8000/api/export-pdf';
+          const endpoint = isImg ? ${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/export-image : ${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/export-pdf;
           const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 
@@ -349,7 +349,7 @@ by the Cloak platform. All structured data was secured locally.
                       
                       if (rememberTerm) {
                         try {
-                          await fetch('http://localhost:8000/api/rules', {
+                          await fetch(${import.meta.env.VITE_API_URL || '${import.meta.env.VITE_API_URL || 'http://localhost:8000'}'}/api/rules, {
                             method: 'POST',
                             headers: { 
                               'Content-Type': 'application/json',
