@@ -596,7 +596,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 animate={{ opacity: 1, y: "-100%", scale: 1, x: "-50%" }}
                 exit={{ opacity: 0, scale: 0.95, x: "-50%", y: "-100%" }}
                 transition={{ duration: 0.15 }}
-                className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-1.5 w-64 pointer-events-auto rounded-lg"
+                className="fixed z-[9999] bg-slate-900/95 backdrop-blur-xl border border-slate-700 shadow-2xl p-3 flex flex-col gap-1.5 w-64 pointer-events-auto rounded-lg after:content-[''] after:absolute after:top-full after:left-0 after:right-0 after:h-6"
                 style={{ top: hoverTooltip.y - 10, left: hoverTooltip.x }}
               >
                 <div className="flex items-center justify-between mb-1">
