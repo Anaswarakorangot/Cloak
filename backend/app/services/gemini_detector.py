@@ -4,7 +4,7 @@ import json
 import re
 import logging
 from dotenv import load_dotenv
-from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult
+from app.models.pii_schemas import PIISpan, PIIType, DocumentAnalysisResult, SpanStatus
 
 load_dotenv()
 
@@ -140,7 +140,8 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
                 type=pii_type,
                 confidence=confidence,
                 suggested_redaction=suggested_redaction,
-                reason=reason
+                reason=reason,
+                status=SpanStatus.REDACTED if suggested_redaction else SpanStatus.PENDING
             ))
 
         # 4. Merge local spans and Gemini spans

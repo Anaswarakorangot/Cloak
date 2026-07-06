@@ -35,7 +35,7 @@ class PIISpan(BaseModel):
     confidence: float
     suggested_redaction: bool
     reason: Optional[str] = None
-    status: SpanStatus = SpanStatus.PENDING
+    status: SpanStatus = SpanStatus.REDACTED
     risk_score: float = 0.0          # (1 - confidence) * severity_weight
     # Simulated consensus from 3 models (visual feature the judges see)
     model_agreement: Optional[List[Dict]] = None  # [{"model": "Gemini", "agreed": True}, ...]

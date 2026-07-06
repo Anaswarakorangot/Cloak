@@ -35,6 +35,7 @@ interface DocumentViewerProps {
     totalExposureScore: number;
     stageForDismissal: (spanId: string) => void;
     globalResolve: (text: string, action: 'REDACT' | 'KEEP') => void;
+    revertSpanStatus: (spanId: string) => void;
   };
 }
 
@@ -42,7 +43,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   const { 
     document, loading, reviewMode, removeRedaction, addRedaction, confirmRedaction, 
     toggleReviewMode, fileName, startTime, sessionLog = [], undoLastAction,
-    totalExposureScore, stageForDismissal, globalResolve
+    totalExposureScore, stageForDismissal, globalResolve, revertSpanStatus
   } = documentState;
 
   const reviewQueue = React.useMemo(() =>
@@ -63,7 +64,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
 
   const textRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = useState<{x: number, y: number, text: string, start: number, end: number} | null>(null);
+  const [tooltip, setTooltip] = useState<{x: number, y: number, text?: string, start?: number, end?: number, spanId?: string} | null>(null);
   const [focusedSpanIndex, setFocusedSpanIndex] = useState<number>(0);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -94,7 +95,17 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
   }, [document?.document_id, fileName]);
   useEffect(() => {
     const handleDocumentClick = (e: MouseEvent) => {
-      const tooltipEl = document.getElementById('redaction-tooltip');
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'MARK' && target.hasAttribute('data-span-id')) {
+        const spanId = target.getAttribute('data-span-id');
+        if (spanId) {
+          const rect = target.getBoundingClientRect();
+          setTooltip({ x: rect.left + rect.width / 2, y: rect.top, spanId });
+        }
+        return;
+      }
+      
+      const tooltipEl = window.document.getElementById('redaction-tooltip');
       if (
         textRef.current && 
         !textRef.current.contains(e.target as Node) &&
@@ -239,13 +250,23 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             markStyle += " background-color: rgba(0, 0, 0, 0.3); color: inherit; border-bottom: 2px dashed rgba(0, 0, 0, 0.6);";
         }
 
+        let titleText = `Type: ${span.type} | Confidence: ${(span.confidence * 100).toFixed(0)}%&#10;`;
+        titleText += `Reason: ${span.reason || 'No reason provided.'}`;
+        if (span.model_agreement) {
+          const agreedModels = span.model_agreement.filter((m: any) => m.agreed).map((m: any) => m.model);
+          if (agreedModels.length > 0) {
+            titleText += `&#10;Models: ${agreedModels.join(', ')}`;
+          }
+        }
+        titleText = titleText.replace(/"/g, '&quot;');
+
         // Only replace if the text exists and isn't already inside a mark tag attribute
         if (str.includes(span.text)) {
            // Basic protection against replacing inside an already added HTML tag
            const parts = str.split(span.text);
-           str = parts.join(`<mark style="${markStyle}">${span.text}</mark>`);
+           str = parts.join(`<mark style="${markStyle} cursor: pointer;" title="${titleText}" data-span-id="${span.id}">${span.text}</mark>`);
         } else if (span.text.includes(str.trim()) && str.trim().length > 3) {
-           str = `<mark style="${markStyle}">${str}</mark>`;
+           str = `<mark style="${markStyle} cursor: pointer;" title="${titleText}" data-span-id="${span.id}">${str}</mark>`;
         }
       }
       return str;
@@ -253,7 +274,16 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     [document?.spans]
   );
 
-  const handleSpanClick = (span: any) => {
+  const handleSpanClick = (span: any, e?: React.MouseEvent) => {
+    if (span.status === 'REDACTED' || span.status === 'KEPT_VISIBLE') {
+      const rect = e ? (e.target as HTMLElement).getBoundingClientRect() : null;
+      if (rect) {
+        setTooltip({ x: rect.left + rect.width / 2, y: rect.top, spanId: span.id });
+      } else {
+        revertSpanStatus(span.id);
+      }
+      return;
+    }
     const index = reviewQueue.findIndex(s => s.id === span.id);
     if (index !== -1) setFocusedSpanIndex(index);
     const el = window.document.getElementById(`queue-item-${span.id}`);
@@ -278,6 +308,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           key={`span-${span.id}`} 
           span={span} 
           onClick={handleSpanClick}
+          isFinalPreview={!reviewMode}
         />
       );
       
@@ -479,6 +510,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 ))}
               </div>
             )}
+
             
             {/* Session Log / Decision Trail */}
             <div className="pt-2 pb-6">
@@ -531,19 +563,37 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
           className="fixed z-50 bg-[#0a0a0a]/95 backdrop-blur-2xl border border-white/10 text-white rounded-xl shadow-2xl px-3 py-2 flex items-center gap-2 ring-1 ring-white/5"
           style={{ top: tooltip.y - 45, left: tooltip.x }}
         >
-          <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-orange-300 uppercase tracking-wider">Redact as:</span>
-          {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
-            <button 
-              key={type}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddRedaction(type);
-              }}
-              className="text-xs font-medium hover:bg-orange-500/20 hover:text-orange-200 px-2 py-1.5 rounded transition-all duration-200"
-            >
-              {type}
-            </button>
-          ))}
+          {tooltip.spanId ? (
+            <div className="flex flex-col items-center">
+              <span className="text-xs font-semibold text-slate-300 mb-2">Manage Resolved Item</span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  revertSpanStatus(tooltip.spanId!);
+                  setTooltip(null);
+                }}
+                className="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 px-4 py-1.5 rounded transition-all duration-200 border border-amber-500/30"
+              >
+                ⤺ Revert to Pending
+              </button>
+            </div>
+          ) : (
+            <>
+              <span className="text-xs font-semibold mr-2 border-r border-slate-600/50 pr-2 text-orange-300 uppercase tracking-wider">Redact as:</span>
+              {[PIIType.NAME, PIIType.PHONE, PIIType.EMAIL, PIIType.SSN].map(type => (
+                <button 
+                  key={type}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddRedaction(type);
+                  }}
+                  className="text-xs font-medium hover:bg-orange-500/20 hover:text-orange-200 px-2 py-1.5 rounded transition-all duration-200"
+                >
+                  {type}
+                </button>
+              ))}
+            </>
+          )}
         </motion.div>,
         window.document.body
       )}

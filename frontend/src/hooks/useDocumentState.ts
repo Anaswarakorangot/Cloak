@@ -139,6 +139,17 @@ export function useDocumentState() {
 
   const toggleReviewMode = () => setReviewMode(!reviewMode);
 
+  const revertSpanStatus = (spanId: string) => {
+    if (!document) return;
+    addLog('UNDO', 'Reverted a resolved item back to pending', document.spans);
+    setDocumentState({
+      ...document,
+      spans: document.spans.map(s =>
+        s.id === spanId ? { ...s, status: 'PENDING' as SpanStatus } : s
+      )
+    });
+  };
+
   return {
     document,
     loading,
@@ -158,5 +169,6 @@ export function useDocumentState() {
     confidenceThreshold,
     setConfidenceThreshold,
     totalExposureScore,
+    revertSpanStatus,
   };
 }

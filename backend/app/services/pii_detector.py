@@ -306,7 +306,7 @@ def analyze_text_local(text: str, custom_rules: list = None, knowledge_graph: li
     for span in deduplicated:
         span.risk_score = _compute_risk_score(span.type.value, span.confidence)
         span.model_agreement = _make_consensus(span.type.value, span.confidence)
-        span.status = SpanStatus.PENDING
+        span.status = SpanStatus.REDACTED if span.suggested_redaction else SpanStatus.PENDING
 
     deduplicated.sort(key=lambda x: -x.risk_score)
     unresolved_risk = sum(s.risk_score for s in deduplicated if s.status == SpanStatus.PENDING and s.suggested_redaction == False)
@@ -361,7 +361,7 @@ def _analyze_text_regex_fallback(text: str) -> DocumentAnalysisResult:
             confidence=c['confidence'],
             suggested_redaction=suggested,
             reason=c['reason'],
-            status=SpanStatus.PENDING,
+            status=SpanStatus.REDACTED if suggested else SpanStatus.PENDING,
             risk_score=risk,
             model_agreement=_make_consensus(c['type'].value, c['confidence'])
         ))
