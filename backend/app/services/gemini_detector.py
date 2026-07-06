@@ -62,31 +62,15 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
         
         # 1. Run local detector FIRST to get the baseline spans
         local_result = analyze_text_local(text, custom_rules=custom_rules, knowledge_graph=knowledge_graph)
-        
-        # Add the privacy justification note to local spans
-        for span in local_result.spans:
-            if span.suggested_redaction:
-                span.reason = f"🔒 Secured Locally: {span.type.value} was masked before sending document to Gemini cloud AI."
 
-        
-        # 2. Mask the high-confidence local spans with asterisks to protect them from the cloud
-        # We replace characters exactly so the string length and indices remain identical.
-        masked_text_chars = list(text)
-        for local_span in local_result.spans:
-            if local_span.suggested_redaction:
-                for i in range(local_span.start, local_span.end):
-                    if masked_text_chars[i].isalnum():
-                        masked_text_chars[i] = "*"
-        masked_text_str = "".join(masked_text_chars)
-
-        # 3. Call Gemini API using the MASKED text for contextual reasoning
+        # 2. Call Gemini API using the RAW text so it can verify everything
         client = genai.Client(api_key=GEMINI_API_KEY)
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             config=genai_types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
             ),
-            contents=f"Analyze this document for PII:\n\n{masked_text_str}"
+            contents=f"Analyze this document for PII:\n\n{text}"
         )
         raw = response.text.strip()
 
@@ -109,11 +93,8 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
             except ValueError:
                 pii_type = PIIType.UNKNOWN
 
-            start_idx = _find_span_offset(masked_text_str, span_text, search_from)
+            start_idx = _find_span_offset(text, span_text, search_from)
             if start_idx == -1:
-                start_idx = _find_span_offset(masked_text_str, span_text, 0)
-            if start_idx == -1:
-                # If Gemini modified the string (it shouldn't), try finding it in the original text
                 start_idx = _find_span_offset(text, span_text, 0)
                 
             if start_idx == -1:
@@ -122,13 +103,8 @@ def analyze_with_gemini(text: str, custom_rules: list = None, knowledge_graph: l
 
             end_idx = start_idx + len(span_text)
             
-            # Since the text was masked, the span_text might contain asterisks.
             # Get the actual original text for this span so the UI displays it correctly.
             original_span_text = text[start_idx:end_idx]
-            
-            # If the span is purely asterisks or spaces, it means Gemini just re-flagged our masked data. Skip it.
-            if all(c == '*' or c.isspace() for c in span_text):
-                continue
                 
             suggested_redaction = confidence >= 0.7
 
