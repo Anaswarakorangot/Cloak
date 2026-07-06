@@ -6,34 +6,47 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google)
 
-*Built for the Sprintfour Hackathon.*
-
 ## 🚀 Overview
 
-**Cloak** is a zero-trust, privacy-first desktop application built to anonymize documents by automatically redacting or labeling personally identifying information (PII). 
+**Cloak** is a zero-trust, privacy-first web application built to anonymize documents by automatically redacting or labeling personally identifying information (PII). 
 
-For this hackathon, we focused deeply on **Problem 3: Fixing the tool's mistakes**. Machine learning and regex engines are never 100% perfect. We built a robust "correction-first" UX that acknowledges automation bias, flags low-confidence detections, and gives human reviewers an incredibly fast way to propagate manual corrections across an entire document.
+Machine learning and regex engines are never 100% perfect. We built a robust "correction-first" UX that acknowledges automation bias, flags low-confidence detections, and gives human reviewers an incredibly fast way to propagate manual corrections across an entire document.
 
 ---
 
-## ✨ Core Features (Hackathon Highlights)
+## ✨ Core Features
 
-### 🎯 1. Auto-Propagating Manual Redactions
-When the AI misses a piece of PII (like a stray first name mentioned later in a document), the user can simply click **Manual Redact**. Selecting the missed text or typing it into the modal instantly sweeps the entire document and intelligently redacts all matching instances (handling case-insensitivity and punctuation boundaries). **Fix it once, fix it everywhere.**
-
-### 🕵️ 2. Automation Bias "Speed Bumps"
-If a user tries to export a document too quickly, or leaves yellow "low-confidence" PII flags unreviewed, the system automatically triggers a speed bump. This forces the user to pause and acknowledge the risk of automation bias before generating the final export.
-
-### 🧠 3. Dual-Engine Architecture
+### 🧠 1. Dual-Engine Hybrid PII Detection
 Cloak utilizes two distinct detection modes:
-*   **Local Engine**: A fast, deterministic regex and logic-based engine (integrated with `presidio-analyzer`) that processes data entirely offline, with built-in entity alias resolution.
+*   **Local Engine**: A fast, deterministic regex and logic-based engine (integrated with `presidio-analyzer`) that processes data entirely offline.
 *   **Gemini AI Engine**: Powered by Google's Gemini 2.5 Flash, this cloud engine understands deep semantic context to catch nuanced PII that regex engines miss. 
 
-### 📄 4. True-to-Life PDF Export
-When exporting a document, users can choose `.TXT`, `.DOC`, or `.PDF`. The PDF engine converts all redacted labels into literal blackout blocks (`███████`) that perfectly match the character length of the hidden words—delivering a final product that looks identical to a professionally redacted government document.
+### 🕸️ 2. Dynamic Knowledge Graph
+The system builds a relationship graph as it processes documents. If it sees that "John Doe" is linked to "john.doe@example.com" in one document, it remembers that association. Future documents containing just the email will be flagged automatically, even if the person's name is entirely absent.
 
-### ⚙️ 5. Custom Rules Engine
+### 🤖 3. AI Explanations & Reasoning
+When using the Gemini AI mode, every detected PII span includes a plain-English explanation (e.g., "Matches standard SSN format" or "Historically linked to John Doe in the Knowledge Graph"). This builds trust and speeds up human review.
+
+### ⚙️ 4. Custom Rules Engine
 Organizations have unique PII (like custom employee ID formats). Cloak features a dynamic rules engine where users can define custom regex patterns that are instantly applied alongside standard PII checks.
+
+### 📄 5. PDF & Image OCR Support
+Cloak doesn't just read plain text. Using `pdfplumber` and `pytesseract`, it can extract and analyze text from uploaded PDFs and images effortlessly.
+
+### 🎯 6. Auto-Propagating Manual Redactions & True-to-Life Export
+*   **Manual Redact**: Selecting missed text instantly sweeps the entire document and intelligently redacts all matching instances. Fix it once, fix it everywhere.
+*   **Final Export**: Choose `.TXT`, `.DOC`, or `.PDF`. The PDF engine converts all redacted labels into literal blackout blocks (`███████`) that perfectly match the character length of the hidden words.
+
+---
+
+## 🔑 Demo Credentials
+
+To test the application, you can use the following default credentials which are automatically seeded into the database:
+
+*   **Username:** `admin`
+*   **Password:** `password123`
+
+*(Note: You can also register a new account on the login page for free).*
 
 ---
 
@@ -46,46 +59,8 @@ Organizations have unique PII (like custom employee ID formats). Cloak features 
 
 ---
 
-## 💻 Running the Project Locally
-
-### Prerequisites
-*   Node.js (v18+)
-*   Python 3.9+
-*   Tesseract OCR (optional, for image processing)
-
-### 1. Start the Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # (On Windows: venv\Scripts\activate)
-pip install -r requirements.txt
-
-# Make sure you have a .env file with your GEMINI_API_KEY
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### 2. Start the Frontend
-Open a new terminal window:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 3. Open the App
-Navigate to `http://localhost:5173` in your browser. 
-Click **"Quick Demo"** on the dashboard to test the pre-loaded edge cases and manual redaction workflow!
-
----
-
-## 📖 Further Reading
-*   [Feature Documentation](FEATURES.md) - A comprehensive breakdown of all features and how they work.
-*   [Project Documentation](PROJECT_DOCUMENTATION.md) - Database schema and data flow.
-
----
-
 <div align="center">
-  <b>Built for the Sprintfour Hackathon</b><br>
-  By Anaswara K<br>
+  <b>Developed By</b><br>
+  Anaswara K<br>
   <code>CB.SC.U4CSE23405</code>
 </div>
