@@ -33,12 +33,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
   const lowConfidenceUnreviewed = document?.spans.filter(s => s.confidence < 0.7 && !s.suggested_redaction).length || 0;
   
   const handleExportClick = () => {
-    const timeOpen = Date.now() - startTime;
-    if (lowConfidenceUnreviewed > 0 || timeOpen < 5000) {
-      setShowSpeedBump(true);
-    } else {
-      doExport();
-    }
+    setShowExportModal(true);
   };
 
   const [exportFormat, setExportFormat] = useState<'txt' | 'doc' | 'pdf'>('txt');
@@ -283,9 +278,18 @@ by the Cloak platform. All structured data was secured locally.
         <ExposureMeter score={totalExposureScore} />
       </div>
 
-      <div className="relative">
+      <div className="relative flex items-center gap-2">
+        <select 
+          value={exportFormat} 
+          onChange={(e: any) => setExportFormat(e.target.value)}
+          className="bg-slate-800 text-white rounded-lg px-3 py-2.5 text-sm border border-slate-700 font-medium hover:bg-slate-700 transition-colors cursor-pointer"
+        >
+          <option value="txt">.TXT</option>
+          <option value="pdf">.PDF</option>
+          <option value="doc">.DOC</option>
+        </select>
         <button 
-          onClick={() => setShowExportModal(true)}
+          onClick={handleExportClick}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-bold text-sm transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-70"
         >
           <ShieldCheck size={18} />
@@ -381,14 +385,15 @@ by the Cloak platform. All structured data was secured locally.
           window.document.body
         )}
 
-        {showExportModal && (
+        {showExportModal && createPortal(
           <FinalExportModal 
             isOpen={showExportModal} 
             onClose={() => setShowExportModal(false)}
+            onConfirm={doExport}
+            exportFormat={exportFormat}
             spans={document?.spans ?? []}
-            documentText={document?.text ?? ''}
-            fileName={fileName}
-          />
+          />,
+          window.document.body
         )}
 
         {showSummary && createPortal(

@@ -4,12 +4,12 @@ import { PIISpan } from '@shared/types';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm: () => void;
+  exportFormat: string;
   spans: PIISpan[];
-  documentText: string;
-  fileName: string;
 }
 
-export function FinalExportModal({ isOpen, onClose, spans, documentText, fileName }: Props) {
+export function FinalExportModal({ isOpen, onClose, onConfirm, exportFormat, spans }: Props) {
   const [state, setState] = useState<'scanning' | 'issues' | 'clear'>('scanning');
 
   const dismissedHighRisk = spans.filter(s =>
@@ -25,17 +25,8 @@ export function FinalExportModal({ isOpen, onClose, spans, documentText, fileNam
     return () => clearTimeout(t);
   }, [isOpen, dismissedHighRisk]);
 
-  const handleDownload = async () => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/export`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('cloak_token')}` },
-      body: JSON.stringify({ document_text: documentText, spans, file_name: fileName })
-    });
-    const blob = await res.blob();
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(blob), download: `cloak_${fileName}.zip`
-    });
-    a.click(); URL.revokeObjectURL(a.href);
+  const handleDownload = () => {
+    onConfirm();
     onClose();
   };
 
@@ -68,7 +59,7 @@ export function FinalExportModal({ isOpen, onClose, spans, documentText, fileNam
             </div>
             <button onClick={handleDownload}
               className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-100 transition-colors">
-              📦 Download Audit Bundle (.zip)
+              📦 Download Safe Document (.{exportFormat})
             </button>
           </div>
         )}
@@ -88,7 +79,7 @@ export function FinalExportModal({ isOpen, onClose, spans, documentText, fileNam
               </button>
               <button onClick={handleDownload}
                 className="flex-1 bg-red-900 text-white py-2.5 rounded-lg hover:bg-red-800 transition-colors">
-                Export Anyway
+                Export Anyway (.{exportFormat})
               </button>
             </div>
           </div>
