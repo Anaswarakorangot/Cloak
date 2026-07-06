@@ -4,12 +4,13 @@ import { PIISpan } from '@shared/types';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
-  exportFormat: string;
+  onConfirm: (format: 'txt' | 'doc' | 'pdf') => void;
   spans: PIISpan[];
+  documentText?: string;
+  fileName?: string;
 }
 
-export function FinalExportModal({ isOpen, onClose, onConfirm, exportFormat, spans }: Props) {
+export function FinalExportModal({ isOpen, onClose, onConfirm, spans }: Props) {
   const [state, setState] = useState<'scanning' | 'issues' | 'clear'>('scanning');
 
   const dismissedHighRisk = spans.filter(s =>
@@ -24,11 +25,6 @@ export function FinalExportModal({ isOpen, onClose, onConfirm, exportFormat, spa
     const t = setTimeout(() => setState(dismissedHighRisk > 0 ? 'issues' : 'clear'), 2200);
     return () => clearTimeout(t);
   }, [isOpen, dismissedHighRisk]);
-
-  const handleDownload = () => {
-    onConfirm();
-    onClose();
-  };
 
   if (!isOpen) return null;
   return (
@@ -57,10 +53,11 @@ export function FinalExportModal({ isOpen, onClose, onConfirm, exportFormat, spa
                 <p className="text-neutral-400 text-xs mt-1">Exposures Missed</p>
               </div>
             </div>
-            <button onClick={handleDownload}
-              className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-100 transition-colors">
-              📦 Download Safe Document (.{exportFormat})
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => { onConfirm('pdf'); onClose(); }} className="flex-1 bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-200 transition-colors">PDF</button>
+              <button onClick={() => { onConfirm('doc'); onClose(); }} className="flex-1 bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-200 transition-colors">DOC</button>
+              <button onClick={() => { onConfirm('txt'); onClose(); }} className="flex-1 bg-white text-black font-bold py-3 rounded-lg hover:bg-neutral-200 transition-colors">TXT</button>
+            </div>
           </div>
         )}
 
@@ -72,15 +69,16 @@ export function FinalExportModal({ isOpen, onClose, onConfirm, exportFormat, spa
               You dismissed <span className="text-red-400 font-bold">{dismissedHighRisk} high-risk item(s)</span> without redacting them.
               These may still contain PII.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2 mt-4">
               <button onClick={onClose}
                 className="flex-1 border border-neutral-600 text-white py-2.5 rounded-lg hover:bg-neutral-800 transition-colors">
                 ← Go Back & Review
               </button>
-              <button onClick={handleDownload}
-                className="flex-1 bg-red-900 text-white py-2.5 rounded-lg hover:bg-red-800 transition-colors">
-                Export Anyway (.{exportFormat})
-              </button>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => { onConfirm('pdf'); onClose(); }} className="flex-1 bg-red-900/80 text-white font-bold py-2.5 rounded-lg hover:bg-red-800 transition-colors">Export PDF</button>
+              <button onClick={() => { onConfirm('doc'); onClose(); }} className="flex-1 bg-red-900/80 text-white font-bold py-2.5 rounded-lg hover:bg-red-800 transition-colors">Export DOC</button>
+              <button onClick={() => { onConfirm('txt'); onClose(); }} className="flex-1 bg-red-900/80 text-white font-bold py-2.5 rounded-lg hover:bg-red-800 transition-colors">Export TXT</button>
             </div>
           </div>
         )}

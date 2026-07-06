@@ -36,10 +36,9 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
     setShowExportModal(true);
   };
 
-  const [exportFormat, setExportFormat] = useState<'txt' | 'doc' | 'pdf'>('txt');
   const [exportName, setExportName] = useState(fileName.replace(/\.[^/.]+$/, ''));
 
-  const doExport = async () => {
+  const doExport = async (format: 'txt' | 'doc' | 'pdf') => {
     setShowSpeedBump(false);
     setIsExporting(false); // Close the speed bump if open
     
@@ -59,7 +58,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
       });
     }
 
-    if (exportFormat === 'pdf') {
+    if (format === 'pdf') {
       setIsExporting(true);
 
       const isPdf = fileName.toLowerCase().endsWith('.pdf');
@@ -167,7 +166,7 @@ export function ControlPanel({ document, reviewMode, onToggleReviewMode, startTi
     let fileContent = plainText;
     let mimeType = 'text/plain';
     
-    if (exportFormat === 'doc') {
+    if (format === 'doc') {
       const htmlText = plainText.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
       fileContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head><meta charset='utf-8'><title>${exportName}</title></head>
@@ -183,7 +182,7 @@ ${htmlText}
     const url = window.URL.createObjectURL(blob);
     const a = window.document.createElement('a');
     a.href = url;
-    a.download = `${exportName || 'document'}.${exportFormat}`;
+    a.download = `${exportName || 'document'}.${format}`;
     window.document.body.appendChild(a);
     
     // Slight delay before cleanup prevents strict browsers from aborting the download
@@ -278,16 +277,7 @@ by the Cloak platform. All structured data was secured locally.
         <ExposureMeter score={totalExposureScore} />
       </div>
 
-      <div className="relative flex items-center gap-2">
-        <select 
-          value={exportFormat} 
-          onChange={(e: any) => setExportFormat(e.target.value)}
-          className="bg-slate-800 text-white rounded-lg px-3 py-2.5 text-sm border border-slate-700 font-medium hover:bg-slate-700 transition-colors cursor-pointer"
-        >
-          <option value="txt">.TXT</option>
-          <option value="pdf">.PDF</option>
-          <option value="doc">.DOC</option>
-        </select>
+      <div className="relative">
         <button 
           onClick={handleExportClick}
           className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-bold text-sm transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-70"
@@ -390,7 +380,6 @@ by the Cloak platform. All structured data was secured locally.
             isOpen={showExportModal} 
             onClose={() => setShowExportModal(false)}
             onConfirm={doExport}
-            exportFormat={exportFormat}
             spans={document?.spans ?? []}
           />,
           window.document.body
