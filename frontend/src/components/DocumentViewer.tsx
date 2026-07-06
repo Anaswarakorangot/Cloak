@@ -335,7 +335,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
     <div className="flex h-full relative rounded-b-3xl border-t-0 shadow-inner bg-white/[0.02] backdrop-blur-md">
       
       {/* Main Document Area */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r border-white/5">
         <ControlPanel 
           document={document} 
           reviewMode={reviewMode} 
@@ -375,7 +375,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
         )}
         
         {reviewMode ? (
-          <div className="flex-1 flex w-full overflow-hidden bg-[#1e1e1e]">
+          <div className="flex-1 flex w-full overflow-hidden bg-[#1e1e1e] min-h-0">
             {!(fileName.toLowerCase().endsWith('.pdf') && document.document_id) ? (
               <div 
                 ref={textRef}
@@ -389,7 +389,7 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
             )}
           </div>
         ) : (
-          <div className="flex-1 flex w-full overflow-hidden">
+          <div className="flex-1 flex w-full overflow-hidden min-h-0">
             {fileName.toLowerCase().endsWith('.pdf') && document.document_id ? (
               <div className="w-full bg-[#1e1e1e] flex flex-col">{renderPdfViewer(true)}</div>
             ) : (
