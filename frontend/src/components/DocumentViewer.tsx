@@ -616,9 +616,18 @@ export function DocumentViewer({ documentState }: DocumentViewerProps) {
                 </p>
 
                 {agreedModels.length > 0 && (
-                  <div className="mt-1 pt-1.5 border-t border-slate-700/50 flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Models:</span>
-                    <span className="text-[10px] text-indigo-300 font-medium">{agreedModels.join(', ')}</span>
+                  <div className="mt-1 pt-1.5 border-t border-slate-700/50 flex flex-col gap-1.5">
+                    {agreedModels.includes("Gemini 2.5 Flash") && (
+                      <div className="flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded w-fit">
+                        <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider">✨ Verified by AI</span>
+                      </div>
+                    )}
+                    {!agreedModels.includes("Gemini 2.5 Flash") && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Models:</span>
+                        <span className="text-[10px] text-indigo-300 font-medium">{agreedModels.join(', ')}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
