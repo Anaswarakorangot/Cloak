@@ -81,14 +81,18 @@ PII_PATTERNS = [
     # SSN: 123-45-6789
     (r'\b\d{3}-\d{2}-\d{4}\b', PIIType.SSN, 0.97, "Matches structured US Social Security Number format"),
     # Phone: various formats
-    (r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', PIIType.PHONE, 0.90, "Matches standard phone number pattern"),
+    (r'\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b', PIIType.PHONE, 0.90, "Matches standard US/CA phone number pattern"),
+    (r'\b(?:\+?91|0)?[-\s]?[6-9]\d{4}[-\s]?\d{5}\b', PIIType.PHONE, 0.90, "Matches Indian phone number pattern"),
+    (r'\B\+[1-9]\d{1,14}\b', PIIType.PHONE, 0.85, "Matches standard E.164 international phone number format"),
     (r'\b\d{3}-\d{4}\b', PIIType.PHONE, 0.65, "Matches 7-digit local phone number pattern"),
     # Date of birth patterns like MM/DD/YYYY or YYYY-MM-DD
     (r'\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b', PIIType.DOB, 0.72, "Matches typical Date of Birth (MM/DD/YYYY) format"),
     # Street address (number + street name)
-    (r'\b\d{1,5}\s+[A-Z][a-zA-Z\s,]+(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Court|Ct|Place|Pl|Drive|Boulevard)(?:[^.!?\n]{0,50}?,\s*[A-Z]{2}\s+\d{5})?\b\.?', PIIType.ADDRESS, 0.82, "Matches common street address structure"),
-    # Zip codes (standalone 5 or 9 digit)
-    (r'\b\d{5}(?:-\d{4})?\b', PIIType.ADDRESS, 0.55, "Matches standalone 5-digit or 9-digit zip code format"),
+    (r'\b\d{1,5}\s+[A-Z][a-zA-Z\s,]+(?:St|Ave|Rd|Blvd|Dr|Ln|Way|Court|Ct|Place|Pl|Drive|Boulevard)(?:[^.!?\n]{0,50}?,\s*[A-Z]{2}\s+\d{5})?\b\.?', PIIType.ADDRESS, 0.82, "Matches common US/UK street address structure"),
+    (r'\b\d{1,5}[a-zA-Z]?\s*[-,/]?\s*\d{0,5}\s+[a-zA-Z\s,]+(?:Marg|Path|Gali|Layout|Block|Sector|Nagar|Colony|Enclave|Bagh|Vihar|Phase|Cross|Main|Street|Road)(?:[^.!?\n]{0,80}?)(?:,\s*[a-zA-Z\s]+)?\s*(?:-\s*)?\d{6}\b\.?', PIIType.ADDRESS, 0.85, "Matches common Indian/South Asian street address structures"),
+    # Zip/PIN codes (standalone)
+    (r'\b\d{5}(?:-\d{4})?\b', PIIType.ADDRESS, 0.55, "Matches standalone 5-digit or 9-digit US zip code format"),
+    (r'\b[1-9]\d{2}\s?\d{3}\b', PIIType.ADDRESS, 0.60, "Matches standalone 6-digit Indian PIN code format"),
     # Bank Account numbers (e.g. #8899-0012-4451)
     (r'\b#?\d{4,}-\d{4,}-\d{4,}\b', PIIType.BANK_ACCOUNT, 0.90, "Matches typical bank/account number format"),
     # Credit Card (Visa, MasterCard, Amex, Discover)
